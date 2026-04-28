@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ネットワークエンジニアがAzureネットワークを学び始めて最初につまずいたこと - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>ネットワークエンジニアがAzureネットワークを学び始めて最初につまずいたこと</h1>
+    <p>2026-04-29 / Azure / Network / Study Log</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        オンプレミスのネットワークエンジニアとしてAzureネットワークを学び始めたときに、
+        最初に混乱したポイントを整理します。
+      </p>
+      <p>
+        本記事は個人の検証・学習メモであり、公式ドキュメントの代替ではありません。
+        会社や顧客の情報は扱わず、一般化した内容として記録します。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初につまずいたポイント</h2>
+
+      <h3>1. VNetは「クラウド上のL3ネットワーク」として考える</h3>
+      <p>
+        Azure Virtual Network、いわゆるVNetは、オンプレミスでいう物理スイッチやルータそのものではなく、
+        Azure上で論理的に分離されたネットワーク空間として理解すると整理しやすいです。
+      </p>
+
+      <h3>2. SubnetはIPアドレス範囲の分割だけではない</h3>
+      <p>
+        Subnetは単なるアドレス範囲の分割ではなく、NSG、ルートテーブル、Private Endpointなどの設計単位にもなります。
+        オンプレミスのVLANに近い感覚で見つつ、Azure固有の制御がある点に注意が必要です。
+      </p>
+
+      <h3>3. NSGはACLに似ているが、完全に同じではない</h3>
+      <p>
+        NSGは通信の許可・拒否を制御する点ではACLに近いですが、サブネットまたはNICに関連付ける点、
+        優先度で評価される点、既定ルールが存在する点など、オンプレミス機器のACLとは運用感が異なります。
+      </p>
+
+      <h3>4. Azure Bastionは踏み台サーバとは少し違う</h3>
+      <p>
+        Azure Bastionは、VMにパブリックIPを付けずにブラウザ経由でRDP/SSH接続するためのマネージドサービスです。
+        自分でLinux踏み台を立てる構成とは、管理範囲やセキュリティ設計の考え方が異なります。
+      </p>
+
+      <h3>5. Private Endpointは名前解決まで含めて理解する必要がある</h3>
+      <p>
+        Private Endpointは、Azure PaaSサービスへプライベートIPで接続するための仕組みですが、
+        実際にはDNSの名前解決が重要になります。
+        IPだけ見ていると理解しにくく、FQDNがプライベートIPへ解決される流れまで確認する必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>今後整理したいこと</h2>
+      <ul>
+        <li>Azure StorageへのPrivate Endpoint接続</li>
+        <li>VNet PeeringとNSGの関係</li>
+        <li>Azure Bastionを使ったVM接続</li>
+        <li>Azure ArcとSentinelの関係</li>
+        <li>TerraformによるAzureネットワーク構築</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Azureネットワークは、オンプレミスネットワークの知識を活かせる部分が多い一方で、
+        マネージドサービス、ID、DNS、PaaS接続など、クラウド特有の考え方も多くあります。
+      </p>
+      <p>
+        今後は、実際に検証した構成をもとに、ネットワークエンジニア目線で整理していきます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

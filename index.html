@@ -4,26 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shin Infra Lab</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>Shin Infra Lab</h1>
+  <header class="site-header">
+    <h1>Shin Infra Lab</h1>
+    <p>ネットワークエンジニアが、Azure・Terraform・自動化・生成AI活用を検証する個人ブログです。</p>
+  </header>
 
-  <p>
-    ネットワークエンジニアが、Azure・Terraform・自動化・生成AI活用を検証する個人ブログです。
-  </p>
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="#">Articles</a>
+    <a href="#">About</a>
+  </nav>
 
-  <h2>扱うテーマ</h2>
-  <ul>
-    <li>Azure / Cloud Network</li>
-    <li>Terraform / IaC</li>
-    <li>Network Automation</li>
-    <li>Azure Sentinel / Azure Arc</li>
-    <li>ChatGPT / Claude Code を使った資格学習・技術検証</li>
-  </ul>
+  <main class="container">
+    <section>
+      <h2>このブログについて</h2>
+      <p>
+        このブログでは、ネットワークエンジニアの視点から、
+        Azure、Terraform、ネットワーク自動化、Sentinel、Azure Arc、生成AIを使った学習・検証方法を整理します。
+      </p>
+      <p>
+        会社や顧客の機密情報は扱わず、個人検証環境や一般化した内容を中心に記録します。
+      </p>
+    </section>
 
-  <h2>最初に書く予定の記事</h2>
-  <p>
-    ネットワークエンジニアがAzureネットワークを学び始めて最初につまずいたこと
-  </p>
+    <section>
+      <h2>最新記事</h2>
+
+      <article class="card">
+        <p>
+          <span class="tag">Azure</span>
+          <span class="tag">Network</span>
+          <span class="tag">Study Log</span>
+        </p>
+        <h3>ネットワークエンジニアがAzureネットワークを学び始めて最初につまずいたこと</h3>
+        <p>
+          VNet、Subnet、NSG、Bastion、Private Endpointなどを、
+          オンプレミスネットワーク経験者の視点で整理する予定です。
+        </p>
+      </article>
+    </section>
+
+    <section>
+      <h2>扱うテーマ</h2>
+      <ul>
+        <li>Azure / Cloud Network</li>
+        <li>Terraform / IaC</li>
+        <li>Network Automation</li>
+        <li>Azure Sentinel / Azure Arc</li>
+        <li>ChatGPT / Claude Code を使った資格学習・技術検証</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
 </body>
 </html>

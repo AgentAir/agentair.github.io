@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Private EndpointでStorageへプライベート接続する検証メモ - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure Private EndpointでStorageへプライベート接続する検証メモ</h1>
+    <p>2026-04-30 / Azure / Private Endpoint / Storage / Study Log</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Azure Storageへインターネット経由ではなく、Private Endpoint経由でプライベート接続する検証を行いました。
+        本記事では、ネットワークエンジニア目線で混乱しやすかったポイントを整理します。
+      </p>
+      <p>
+        本記事は個人の検証メモです。会社名、顧客名、実IPアドレス、サブスクリプションID、SAS URLなどの機密情報は記載しません。
+      </p>
+    </section>
+
+    <section>
+      <h2>やりたかったこと</h2>
+      <p>
+        Azure VMからAzure Storageへアクセスする際に、パブリックインターネットを経由せず、
+        VNet内のプライベートIPアドレスを使って接続できることを確認したかったです。
+      </p>
+
+      <p>検証イメージは以下です。</p>
+
+      <pre><code>Azure VM
+  ↓
+VNet / Subnet
+  ↓
+Private Endpoint
+  ↓
+Azure Storage Account</code></pre>
+    </section>
+
+    <section>
+      <h2>検証構成</h2>
+      <ul>
+        <li>Azure VMを1台用意</li>
+        <li>Azure Storage Accountを作成</li>
+        <li>Storage AccountにPrivate Endpointを作成</li>
+        <li>VMとPrivate Endpointは同じVNet、または通信可能なVNetに配置</li>
+        <li>Private DNS Zoneを使ってStorageのFQDNをプライベートIPへ名前解決</li>
+      </ul>
+
+      <p>
+        ここで重要なのは、Private Endpointを作成するだけではなく、
+        DNSによってStorageのFQDNがPrivate EndpointのプライベートIPへ解決される必要がある点です。
+      </p>
+    </section>
+
+    <section>
+      <h2>Private Endpointで混乱したポイント</h2>
+
+      <h3>1. Private EndpointはStorageそのものではない</h3>
+      <p>
+        Private Endpointは、Azure StorageなどのPaaSサービスへプライベートIPで接続するためのネットワークインターフェースのような存在です。
+        Storage Account自体がVNet内に配置されるわけではなく、VNet内に接続口が作られるイメージです。
+      </p>
+
+      <h3>2. Blob / File / Queue / Table のどれに接続するかを選ぶ必要がある</h3>
+      <p>
+        Azure StorageにはBlob、File、Queue、Tableなど複数のサービスがあります。
+        Private Endpoint作成時には、どのサブリソースに対してPrivate Endpointを作るかを選択します。
+      </p>
+      <p>
+        例えばBlobを検証したい場合はBlob用のPrivate Endpoint、File Shareを検証したい場合はFile用のPrivate Endpointが必要です。
+        ここを間違えると、意図したサービスへプライベート接続できません。
+      </p>
+
+      <h3>3. 名前解決が重要</h3>
+      <p>
+        Private Endpointの検証では、IPアドレスだけでなくFQDNの名前解決を確認する必要があります。
+        Storage AccountのURLにアクセスしたとき、パブリックIPではなくPrivate EndpointのプライベートIPへ解決されることが重要です。
+      </p>
+
+      <pre><code>nslookup &lt;storage-account-name&gt;.blob.core.windows.net</code></pre>
+
+      <p>
+        この結果がPrivate EndpointのプライベートIPを返していれば、DNSの観点では期待した状態に近いです。
+      </p>
+    </section>
+
+    <section>
+      <h2>確認したこと</h2>
+
+      <h3>1. VMから名前解決を確認</h3>
+      <p>
+        まずAzure VM上で、Storage AccountのFQDNがどのIPアドレスに解決されるか確認しました。
+      </p>
+
+      <pre><code>nslookup &lt;storage-account-name&gt;.blob.core.windows.net</code></pre>
+
+      <p>
+        Private EndpointのプライベートIPが返ってくる場合、少なくとも名前解決はPrivate Endpoint向けになっています。
+      </p>
+
+      <h3>2. VMからStorageへアクセス</h3>
+      <p>
+        次に、VM上のブラウザやcurlなどでStorageへアクセスし、通信できるか確認しました。
+      </p>
+
+      <pre><code>curl -I "https://&lt;storage-account-name&gt;.blob.core.windows.net/&lt;container-name&gt;/&lt;file-name&gt;?&lt;SAS-token&gt;"</code></pre>
+
+      <p>
+        ここではSAS URLを使う場合でも、SASトークンそのものは絶対に公開しないように注意します。
+      </p>
+    </section>
+
+    <section>
+      <h2>詰まったエラー</h2>
+
+      <h3>AuthenticationFailed</h3>
+      <p>
+        SAS URLでアクセスした際に、認証に失敗することがあります。
+        この場合、Private Endpointの問題ではなく、SASの権限、対象リソース、期限、署名などが原因の可能性があります。
+      </p>
+
+      <h3>PublicAccessNotPermitted</h3>
+      <p>
+        Storage Account側でパブリックアクセスが禁止されている場合に表示されることがあります。
+        これは設定としては正しい場合もあり、Private Endpoint経由でアクセスできているかを切り分ける必要があります。
+      </p>
+
+      <h3>AuthorizationPermissionMismatch</h3>
+      <p>
+        SASに必要な権限が不足している場合に発生することがあります。
+        例えば読み取りだけでよいのか、一覧表示も必要なのか、Blob単位なのかContainer単位なのかを確認する必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+      <ul>
+        <li>Private EndpointはPaaSサービスをVNet内に置く機能ではなく、プライベート接続口を作る機能として理解するとよい</li>
+        <li>Blob、File、Queue、Tableなど、対象サブリソースを意識する必要がある</li>
+        <li>Private Endpointの検証では、通信確認だけでなく名前解決の確認が重要</li>
+        <li>SASエラーはPrivate Endpointではなく、権限やスコープの問題であることも多い</li>
+        <li>ネットワーク、DNS、認証を分けて切り分けると理解しやすい</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Azure Private Endpointは、オンプレミスのネットワーク機器だけを触ってきた感覚だと最初は少し分かりづらいです。
+        特に、PaaSサービス、DNS、認証、SAS、Storageのサブリソースが絡むため、単純な疎通確認だけでは判断できません。
+      </p>
+      <p>
+        今後は、Private Endpoint、Private DNS Zone、Storage Firewall、SAS、RBACの関係も整理していきたいと思います。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

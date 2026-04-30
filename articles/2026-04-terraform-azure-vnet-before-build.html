@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerraformでAzure VNetを作る前に理解したいこと - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>TerraformでAzure VNetを作る前に理解したいこと</h1>
+    <p>2026-04-30 / Terraform / Azure / VNet</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        前回の記事「Terraformとは何かをネットワークエンジニア目線で整理する」では、
+        provider・resource・state・plan・apply という基本概念を整理しました。
+      </p>
+      <p>
+        今回はその続きとして、TerraformでAzure VNetを実際に作る前に理解しておきたいことを整理します。
+        コードを書き始める前に、どんな要素を設計・把握しておくべきかを確認するのが目的です。
+      </p>
+      <p>
+        本記事は公式ドキュメントの代替ではなく、ネットワークエンジニアとしての視点で整理した個人の学習メモです。
+      </p>
+    </section>
+
+    <section>
+      <h2>TerraformでAzureを操作するにはProviderが必要</h2>
+      <p>
+        TerraformがAzureのリソースを作成・変更・削除するには、<code>azurerm</code> プロバイダーが必要です。
+        プロバイダーはTerraformとAzureの間の接続口のような役割を担っており、
+        Azure Resource Manager APIを通じてリソースを操作します。
+      </p>
+      <p>
+        ネットワーク機器の運用に例えると、SSHで機器に接続するための接続設定（IPアドレス、認証情報、プロトコル）を
+        事前に定義するのに近いイメージです。
+        Terraformでもプロバイダー設定をコードに書いておくことで、どのAzureテナント・サブスクリプションに対して操作を行うかを明示します。
+      </p>
+      <p>
+        認証方法はいくつかあります（Azure CLIログイン、サービスプリンシパルなど）が、
+        まず個人検証環境で試す場合はAzure CLIで事前にログインしておく方法が手軽です。
+        認証情報やシークレットをコードに直接書くのは避け、環境変数や外部ファイルで管理するのが原則です。
+      </p>
+    </section>
+
+    <section>
+      <h2>VNet作成時に考える要素</h2>
+      <p>
+        TerraformでAzure VNetを作成する場合、コードに定義が必要な要素を事前に把握しておくことが重要です。
+        主な要素を整理します。
+      </p>
+
+      <h3>Resource Group（リソースグループ）</h3>
+      <p>
+        AzureのリソースはすべてResource Groupに属します。VNetを作る前に、Resource Groupが存在している必要があります。
+        Terraformでは、Resource GroupもVNetも同じコードで定義でき、作成順の依存関係は自動で解決されます。
+      </p>
+
+      <h3>Location（リージョン）</h3>
+      <p>
+        リソースをデプロイするAzureのリージョンです（例：Japan East）。
+        Resource GroupとVNetは同じLocationに配置するのが基本です。
+      </p>
+
+      <h3>VNet Address Space（アドレス空間）</h3>
+      <p>
+        VNet全体のIPアドレス範囲をCIDR形式で指定します。
+        オンプレミスや他のVNetと重複しないよう、事前にIPアドレス設計をしておく必要があります。
+      </p>
+
+      <h3>Subnet Address Prefix（サブネット）</h3>
+      <p>
+        VNet内をさらに分割した単位です。用途（アプリケーション、管理、Bastion、Private Endpointなど）ごとにサブネットを分けるのが一般的です。
+        オンプレミスのVLAN分割の感覚に近い部分があります。
+      </p>
+
+      <h3>NSG（Network Security Group）</h3>
+      <p>
+        サブネットまたはNICに関連付けるアクセス制御リストです。
+        オンプレミスのACLに近い役割を持ちますが、優先度（Priority）と方向（Inbound/Outbound）をセットで定義する点が異なります。
+        Terraformでは、NSGの定義とサブネットへの関連付けをそれぞれ別のresourceブロックで書きます。
+      </p>
+
+      <h3>Route Table（ルートテーブル）</h3>
+      <p>
+        サブネット内のトラフィックのルーティングを制御します。
+        既定ではAzureのシステムルートが適用されますが、NVAやVPN Gateway経由のルーティングを強制したい場合に追加します。
+        オンプレミスのスタティックルートの設定に近い感覚です。
+      </p>
+
+      <h3>Tags（タグ）</h3>
+      <p>
+        リソースに付与するメタデータです。環境（dev/prod）、担当者、プロジェクト名などを記録しておくと、
+        リソースの棚卸しやコスト管理に役立ちます。
+        Terraformでは全リソースのタグをコードで一元管理できます。
+      </p>
+    </section>
+
+    <section>
+      <h2>オンプレミスNWとの考え方の違い</h2>
+      <p>
+        ネットワークエンジニアとしてAzureのVNetを理解するとき、オンプレミスとの類比は助けになりますが、
+        完全に同じではない部分もあります。
+      </p>
+      <ul>
+        <li>
+          <strong>物理機器への設定投入ではない：</strong>
+          Terraformで書くのはAzure上の論理リソースです。
+          スイッチやルーターのCLIにコマンドを投入するのではなく、クラウド上のAPIを通じてリソースを定義します。
+        </li>
+        <li>
+          <strong>VLANに近い感覚があるSubnetだが仕組みは異なる：</strong>
+          SubnetはVNet内の論理分割ですが、オンプレミスのVLANとは違い、物理NICや802.1Qタギングとは無関係です。
+          Subnetはセキュリティ（NSG）や通信制御（Route Table）の適用単位として機能します。
+        </li>
+        <li>
+          <strong>ACLとNSGは似ているが優先度ベース：</strong>
+          NSGはオンプレミスのACLに近い役割を持ちますが、許可・拒否のルールを優先度の数値（小さいほど優先）で管理します。
+          Denyルールが下位にある場合、Allowルールが先に適用されて通信が許可される点に注意が必要です。
+        </li>
+        <li>
+          <strong>VNet/Subnet/NSG/Route Tableはそれぞれ独立したリソース：</strong>
+          Terraformでは、これらの関連付けもコードで明示的に定義します。
+          NSGをSubnetに関連付けるには別途 <code>azurerm_subnet_network_security_group_association</code> というリソースが必要です。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Terraformで書く前に設計しておくべきこと</h2>
+      <p>
+        コードを書き始める前に、以下の点を整理しておくと、修正の手戻りが減ります。
+      </p>
+
+      <h3>IPアドレス設計</h3>
+      <p>
+        VNetのアドレス空間と各サブネットのCIDRを事前に決めておきます。
+        後から変更するとリソースの再作成が必要になる場合があるため、最初にまとめて設計するのが望ましいです。
+      </p>
+
+      <h3>サブネット分割</h3>
+      <p>
+        用途ごとにサブネットを分けておくと、NSGやRoute Tableの適用範囲が明確になります。
+        例えば、Bastion専用サブネット（AzureBastionSubnet）は名前が固定されているなど、Azureのサービスによって制約がある場合もあります。
+      </p>
+
+      <h3>通信制御の方針</h3>
+      <p>
+        どのサブネット間の通信を許可・拒否するか、インターネットアクセスの要否、オンプレミスとの接続が必要かどうかを整理しておきます。
+        これがNSGのルール設計に直結します。
+      </p>
+
+      <h3>命名規則</h3>
+      <p>
+        Resource Group、VNet、Subnet、NSGなどのリソース名を統一しておきます。
+        後から命名を変えるとTerraformでリソースの再作成が発生する場合があるため、最初に決めておくことが重要です。
+      </p>
+
+      <h3>タグ設計</h3>
+      <p>
+        環境（dev/staging/prod）やプロジェクト名などのタグキーを事前に決めておくと、コード全体で統一したタグを付与できます。
+        Terraformでは変数や locals を使ってタグをまとめて管理できます。
+      </p>
+
+      <h3>将来的な拡張性</h3>
+      <p>
+        後からPrivate EndpointやVPN Gatewayを追加する可能性がある場合、それらに必要なサブネットのCIDRをあらかじめ確保しておくと、
+        後の設計変更を最小限にできます。
+      </p>
+    </section>
+
+    <section>
+      <h2>plan / apply の重要性</h2>
+      <p>
+        Terraformを使う大きなメリットの一つが、<code>terraform plan</code> によって変更内容を事前に確認できることです。
+      </p>
+      <p>
+        <code>terraform plan</code> を実行すると、作成・変更・削除されるリソースの一覧が表示されます。
+        手作業でポータルから変更する場合と比べて、変更の意図と実際の差分を突き合わせやすくなります。
+        ネットワーク変更で言えば、コマンド投入前の「変更前後の比較確認」に相当するステップです。
+      </p>
+      <p>
+        <code>terraform apply</code> は plan の内容を実際に適用します。
+        確認プロンプトで <code>yes</code> を入力するまで変更は走らないため、誤操作のリスクを減らせます。
+      </p>
+      <p>
+        特に注意が必要なのは、変更内容によってはリソースの再作成（削除→新規作成）が発生する場合がある点です。
+        plan の出力で <code>-/+</code> と表示されるものはその対象です。
+        IPアドレスや名前など変更不可な属性を変えた場合に発生しやすいため、plan の確認を習慣化することが重要です。
+      </p>
+    </section>
+
+    <section>
+      <h2>今後やりたいこと</h2>
+      <p>
+        前提知識の整理ができたので、今後は実際に手を動かして検証を進める予定です。
+        ステップとして以下を想定しています。
+      </p>
+      <ul>
+        <li>TerraformでResource Groupを作成する</li>
+        <li>TerraformでVNetとSubnetを作成する</li>
+        <li>NSGを定義してSubnetに関連付ける</li>
+        <li>Route Tableを定義して通信経路を制御する</li>
+        <li>Azure BastionやPrivate Endpoint構成へ発展させる</li>
+      </ul>
+      <p>
+        それぞれの検証結果は別記事としてまとめていきます。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        TerraformでAzure VNetを作成する前に、Resource Group、Location、Address Space、Subnet、NSG、Route Table、Tagsという
+        構成要素を整理しておくことが重要です。
+      </p>
+      <p>
+        オンプレミスのネットワーク設計と考え方が近い部分はありますが、物理機器への設定投入とは異なるアプローチのため、
+        クラウド特有のリソースの定義方法や関連付けの仕組みを理解してからコードを書き始めるのがよいと感じました。
+      </p>
+      <p>
+        plan / apply の流れを活用しながら、実際に手を動かして検証を進めていきます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

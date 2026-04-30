@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure ArcはAzure VMではなくオンプレ・他クラウド向けだと理解した話 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure ArcはAzure VMではなくオンプレ・他クラウド向けだと理解した話</h1>
+    <p>2026-04-30 / Azure / Azure Arc / Hybrid Cloud</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Azure SentinelやAzure Monitor Agent（AMA）の構成を調べていた際、
+        「Arc-enabled serversにAMAをインストールする」という説明をよく目にしました。
+        最初は「Azure VMにもArcを入れる必要があるのか」と混乱しましたが、
+        調べていくうちに自分の中で整理がつきました。
+      </p>
+      <p>
+        本記事は、Azure Arcを誤解していた経験をもとに、
+        「Azure Arcは主に何のための機能か」を自分なりに整理した個人の学習メモです。
+        公式ドキュメントの代替ではなく、理解の過程を残すことを目的としています。
+      </p>
+      <p>
+        結論として、Azure Arc（Arc-enabled servers）は主に
+        オンプレミスや他クラウド上のサーバーをAzureの管理プレーンに接続するための機能であり、
+        Azure VM向けではないと理解しました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Azure Arc-enabled servers とは何か</h2>
+      <p>
+        Microsoft公式の説明をもとに自分なりに整理すると、
+        Azure Arc-enabled serversは、AzureのデータセンターではなくAzure外に存在する
+        Windows/LinuxサーバーをAzure Resource Manager上のリソースとして管理できるようにする仕組みです。
+      </p>
+      <p>
+        具体的には次のようなことができるようになります。
+      </p>
+      <ul>
+        <li>オンプレミスのサーバーをAzureポータルから確認・管理する</li>
+        <li>Azure PolicyをAzure外のサーバーへ適用する</li>
+        <li>VM拡張機能（AMAなど）をAzure外のサーバーへデプロイする</li>
+        <li>Managed Identityを付与して、Azure外のサーバーからAzureリソースへ安全にアクセスする</li>
+        <li>Microsoft Defenderや更新管理などと組み合わせて一元管理する</li>
+      </ul>
+      <p>
+        つまり、Azure外の資産をAzureの管理プレーン上で扱えるようにするための「接続の仕組み」というのが、
+        自分の理解です。
+      </p>
+    </section>
+
+    <section>
+      <h2>なぜAzure VMには通常Arcを入れないのか</h2>
+      <p>
+        Azure VMは最初からAzureリソースとして作成され、最初からAzure Resource Managerに管理されています。
+        そのため、Azure Arcが提供する「Azure外のリソースをAzureに接続する」役割を、Azure VMが必要とする場面は基本的にありません。
+      </p>
+      <p>
+        Azure VMにはネイティブで次の機能が使えます。
+      </p>
+      <ul>
+        <li><strong>Azure Resource Manager：</strong>ポータル、CLIなどからリソースとして直接管理できる</li>
+        <li><strong>VM拡張機能：</strong>AMAなどのエージェントをARC経由でなく直接デプロイできる</li>
+        <li><strong>Managed Identity：</strong>Azure VMにシステム割り当てIDを付与してAzureリソースへアクセスできる</li>
+        <li><strong>Azure Policy：</strong>Azure VMに直接ポリシーを適用できる</li>
+      </ul>
+      <p>
+        これらの機能がすでに使える状態にあるため、Azure VMをArcで再接続する必要は基本的にない、
+        というのが自分の整理です。
+      </p>
+    </section>
+
+    <section>
+      <h2>それでもAzure VMでArcを試すケースがある</h2>
+      <p>
+        ドキュメントを調べていると、「Azure VMをArc-enabled serverとして接続して評価する」という手順が存在します。
+        これは、オンプレミス環境を持っていなくてもArcの動作を検証したい場合に、
+        Azure VMをオンプレミスサーバーの代わりとして使う目的の例外的な手順です。
+      </p>
+      <p>
+        ただし、自分はこれを「本番での推奨構成」ではなく、
+        あくまでも「検証・テスト目的の一時的な使い方」として理解しています。
+        Azure VMに対してArcを本番用途で使う設計を意図したものではない、という点には注意が必要だと感じました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Sentinel / AMA / DCR / Arc の関係で混乱した点</h2>
+      <p>
+        最初に混乱した原因の一つは、これらの機能をまとめて「監視の話」として同じレイヤーで考えていたことです。
+        それぞれの役割を分けて整理すると、次のように理解できました。
+      </p>
+      <ul>
+        <li>
+          <strong>Azure Sentinel（Microsoft Sentinel）：</strong>
+          Log Analytics Workspaceに集めたログを分析・検知・インシデント管理するSIEM/SOARサービス。
+          ログを収集する機能自体はSentinelではなく、AMAやLog Analytics Agentなどのエージェントが担う。
+        </li>
+        <li>
+          <strong>AMA（Azure Monitor Agent）：</strong>
+          OSからログやメトリックを収集してLog Analytics Workspaceや他の宛先へ送るエージェント。
+          Azure VMにも、Arc-enabled serverにもインストールできる。
+        </li>
+        <li>
+          <strong>DCR（Data Collection Rule）：</strong>
+          AMAが「何を収集するか」を定義するルール。
+          イベントログ、Syslog、パフォーマンスカウンターなどの収集設定をここで指定する。
+        </li>
+        <li>
+          <strong>Azure Arc（Arc-enabled servers）：</strong>
+          Azure外のサーバーをAzure管理下に接続するための仕組み。
+          ArcがあることでAzure外のサーバーにもAMAをデプロイしたりDCRを適用したりできるようになる。
+        </li>
+      </ul>
+      <p>
+        つまり、「SentinelでオンプレミスのWindowsサーバーのログを収集したい」という場合の流れは、
+        Arc（Azure外サーバーをAzure管理下に接続） → AMA（ログ収集エージェントをデプロイ） →
+        DCR（何を収集するかを定義） → Log Analytics Workspace（ログを集積） →
+        Sentinel（分析・検知）という構成になります。
+      </p>
+      <p>
+        これを混ぜて考えていたため、「Azure VMにもArcが必要なのか」という誤解が生まれていました。
+      </p>
+    </section>
+
+    <section>
+      <h2>自分なりの整理</h2>
+      <p>
+        調べた内容をもとに、自分なりに次のように整理しました。
+        あくまでも学習段階での理解であり、正確な情報は公式ドキュメントを参照してください。
+      </p>
+      <ul>
+        <li>
+          <strong>Azure VMを監視したい場合：</strong>
+          Azure VMとしてAMAをインストールし、DCRを設定してLog Analytics Workspaceへ送る。
+          Arcは不要。
+        </li>
+        <li>
+          <strong>オンプレミスや他クラウドのサーバーをAzureで管理・監視したい場合：</strong>
+          まずArcでそのサーバーをAzure管理下に接続する。
+          その後、AMAのデプロイやDCRの適用、Azure Policyの適用などが可能になる。
+        </li>
+        <li>
+          <strong>Azure Arcをひと言で表すなら：</strong>
+          「Azure VMにも入れるもの」ではなく、「Azure外のサーバーをAzureの管理プレーンへ接続する入り口」。
+          この理解を持っておくと、ドキュメントを読んだときに混乱が減ると感じました。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+      <ul>
+        <li>
+          <strong>機能の役割を混ぜて考えない：</strong>
+          Arc、AMA、DCR、Sentinelはそれぞれ異なるレイヤーの機能を担っている。
+          「監視まわりの話」としてひとまとめにすると、どれが何をするのかわからなくなる。
+        </li>
+        <li>
+          <strong>Azure VMとArc-enabled serverの前提の違いを意識する：</strong>
+          Azure VMはAzureの管理プレーン上にネイティブに存在する。
+          Arc-enabled serverはAzure外のリソースをAzureに接続した結果として存在する。
+          見た目が似ていても、前提が違う。
+        </li>
+        <li>
+          <strong>検証手順と本番設計を分けて読む：</strong>
+          ドキュメントには検証目的の手順と本番設計の推奨が混在することがある。
+          Azure VMでArcを評価する手順は、本番でAzure VMにArcを入れる前提ではない。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Azure Arc-enabled serversは、オンプレミスや他クラウド上のサーバーをAzureの管理プレーンに接続するための機能です。
+        Azure VMはすでにAzure管理下にあるため、通常はArcを使う必要がありません。
+      </p>
+      <p>
+        最初は「Azure VMにもArcを入れるのか」と混乱しましたが、
+        Arc・AMA・DCR・SentinelそれぞれのレイヤーとAzure VMとArc-enabled serverの前提の違いを整理することで、
+        自分の中では「Azure外のサーバーをAzure管理下に見せるための仕組み」として理解できました。
+      </p>
+      <p>
+        今後は、実際にオンプレミス環境（または検証VMを代替として）でArcを構成し、
+        AMAやSentinelとの連携を手を動かして確認する予定です。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

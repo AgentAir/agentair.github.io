@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>別PCでCodex CLIを使ってGitHub Pagesブログを更新できるようにする手順 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>別PCでCodex CLIを使ってGitHub Pagesブログを更新できるようにする手順</h1>
+    <p>2026-04-30 / Codex / GitHub Pages / Windows</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        実家PCでCodex CLIを導入し、GitHub Pagesブログの更新に使えることを確認しました。
+        次に自宅PCや別PCでも同じ手順を再現できるように、作業ログとして手順をまとめます。
+      </p>
+      <p>
+        目的は、どのPCでもブログ記事の追加や修正ができる状態にすることです。
+        この記事は公式ドキュメントの代替ではなく、自分用の再現手順として整理したものです。
+      </p>
+    </section>
+
+    <section>
+      <h2>前提</h2>
+      <ul>
+        <li>Windows PCを想定します。</li>
+        <li>GitHub Pagesブログのリポジトリは <code>agentair.github.io</code> です。</li>
+        <li>GitHubアカウントにログインできる状態を前提にします。</li>
+        <li>ChatGPTアカウントでCodexを利用できる状態を前提にします。</li>
+        <li>公開リポジトリなので、機密情報は置きません。</li>
+      </ul>
+      <p>
+        会社情報、顧客情報、実IPアドレス、認証情報、SAS URL、試験問題本文などは扱いません。
+        Windowsユーザー名も実名ではなく、<code>%USERPROFILE%</code> や <code>&lt;username&gt;</code> のように抽象化して扱います。
+      </p>
+    </section>
+
+    <section>
+      <h2>Node.js / npm の確認</h2>
+      <p>
+        まず、Node.jsとnpmが使えるか確認します。
+      </p>
+      <pre><code>node -v
+npm.cmd -v</code></pre>
+      <p>
+        <code>node</code> が入っていなければ、Node.js LTSをインストールします。
+        PowerShellでは <code>npm</code> が実行ポリシーによりブロックされる場合があるため、ここでは <code>npm.cmd</code> を使います。
+      </p>
+    </section>
+
+    <section>
+      <h2>Codex CLI のインストール</h2>
+      <p>
+        npmからCodex CLIをインストールします。
+      </p>
+      <pre><code>npm.cmd install -g @openai/codex</code></pre>
+      <p>
+        インストール後、バージョンとコマンドの場所を確認します。
+      </p>
+      <pre><code>codex --version
+where.exe codex</code></pre>
+    </section>
+
+    <section>
+      <h2>GitHubブログリポジトリをcloneする</h2>
+      <p>
+        ブログ用のリポジトリをローカルにcloneします。
+        コマンドプロンプト寄りの書き方では、次のように進めます。
+      </p>
+      <pre><code>mkdir "%USERPROFILE%\Documents\GitHub"
+cd "%USERPROFILE%\Documents\GitHub"
+git clone https://github.com/AgentAir/agentair.github.io.git
+cd agentair.github.io
+git status</code></pre>
+      <p>
+        PowerShellの場合は、次の書き方でも進められます。
+      </p>
+      <pre><code>mkdir "$env:USERPROFILE\Documents\GitHub"
+cd "$env:USERPROFILE\Documents\GitHub"
+git clone https://github.com/AgentAir/agentair.github.io.git
+cd agentair.github.io
+git status</code></pre>
+    </section>
+
+    <section>
+      <h2>Codexをブログフォルダで起動する</h2>
+      <p>
+        Codexは必ずブログリポジトリの中で起動します。
+        起動前に <code>git status</code> で working tree clean を確認しておきます。
+      </p>
+      <pre><code>cd "$env:USERPROFILE\Documents\GitHub\agentair.github.io"
+git status
+codex</code></pre>
+    </section>
+
+    <section>
+      <h2>Codexに最初に渡す確認プロンプト</h2>
+      <p>
+        最初はすぐ編集させず、リポジトリ構成を確認してもらうところから始めます。
+      </p>
+      <pre><code>このリポジトリは、GitHub Pagesで公開している手書きHTML/CSSの個人ブログです。
+
+目的：
+- 既存のHTML構造を大きく変えずに保守する
+- 記事追加やリンク修正を効率化する
+- 会社情報、顧客情報、実IP、認証情報、SAS URL、試験問題本文は含めない
+- 変更前に編集対象ファイルと変更方針を提示する
+
+まず、このリポジトリの構成を確認し、Home / Articles / About / articles配下の記事の役割を整理してください。
+まだファイルは編集しないでください。</code></pre>
+    </section>
+
+    <section>
+      <h2>作業後の確認</h2>
+      <p>
+        Codexが作業した後は、必ず差分を確認します。
+      </p>
+      <pre><code>git status
+git diff</code></pre>
+      <ul>
+        <li>Codexが意図しないファイルを変更していないか確認します。</li>
+        <li>会社情報、実IP、認証情報、SAS URL、試験問題本文が含まれていないか確認します。</li>
+        <li>記事ページ、一覧ページ、トップページのリンクパスが正しいか確認します。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>commit / push</h2>
+      <p>
+        差分に問題がなければ、commitしてGitHubへpushします。
+      </p>
+      <pre><code>git add .
+git diff --cached
+git commit -m "任意のコミットメッセージ"
+git push</code></pre>
+    </section>
+
+    <section>
+      <h2>よくある詰まりポイント</h2>
+      <h3>npm がPowerShellの実行ポリシーでブロックされる</h3>
+      <p>
+        <code>npm</code> が実行できない場合は、<code>npm.cmd</code> を使います。
+      </p>
+
+      <h3>fatal: not a git repository が出る</h3>
+      <p>
+        <code>git status</code> をリポジトリ外で実行している可能性があります。
+        <code>agentair.github.io</code> フォルダへ移動してから再実行します。
+      </p>
+
+      <h3>Author identity unknown が出る</h3>
+      <p>
+        初めて使うPCでは、Gitのユーザー名とメールアドレスが未設定の場合があります。
+      </p>
+      <pre><code>git config --global user.name "Your Name"
+git config --global user.email "your@example.com"</code></pre>
+
+      <h3>Codexを違うフォルダで起動してしまう</h3>
+      <p>
+        <code>pwd</code> で現在地を確認し、ブログリポジトリの中に移動してから <code>codex</code> を起動します。
+      </p>
+    </section>
+
+    <section>
+      <h2>注意点</h2>
+      <ul>
+        <li>ChatGPT履歴JSONやOneNote生データを公開リポジトリに置きません。</li>
+        <li>公開ブログに載せるのは、整理済み・マスク済みの内容だけにします。</li>
+        <li>Codexの出力も必ず <code>git diff</code> で確認します。</li>
+        <li>装飾画像ではなく、必要な場合は技術理解を助ける構成図を使います。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Codex CLIを使えば、別PCでもGitHub Pagesブログを更新できる状態を作れます。
+        重要なのは、Codexを入れることだけではなく、<code>git diff</code> で確認して安全にpushする運用を作ることです。
+      </p>
+      <p>
+        自宅PCでも同じ手順で環境を再現できるように、Node.js、Codex CLI、clone、Codex起動、commit / pushまでの流れを残しました。
+        今後もPCを変えて作業する場合は、この手順を起点に確認します。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

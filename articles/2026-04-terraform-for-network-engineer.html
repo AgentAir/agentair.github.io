@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terraformとは何かをネットワークエンジニア目線で整理する - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Terraformとは何かをネットワークエンジニア目線で整理する</h1>
+    <p>2026-04-30 / Terraform / IaC / Network</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        IaCという言葉はよく聞くようになりましたが、ネットワークエンジニアとして「Terraformは何をするものか」を自分の言葉で説明できるようになるまで、しばらくかかりました。
+      </p>
+      <p>
+        本記事は公式ドキュメントの代替ではなく、ネットワーク運用の経験をもとに、Terraformの基本概念を自分なりに整理した学習メモです。
+        「手順書を見ながらポータルで設定する」スタイルに慣れている方が、Terraformのアプローチを理解するための足がかりになれば幸いです。
+      </p>
+    </section>
+
+    <section>
+      <h2>ネットワーク機器の設定管理と何が違うのか</h2>
+      <p>
+        ネットワーク運用では、次のような作業が日常的に発生します。
+      </p>
+      <ul>
+        <li>変更手順書を作成し、レビューを通じて承認を得る</li>
+        <li>CLIで機器にログインし、コマンドを投入する</li>
+        <li>設定後に running-config を取得して記録に残す</li>
+        <li>次回の変更はその設定ファイルを参照しながら手順書を書く</li>
+      </ul>
+      <p>
+        この流れには「現在の状態を人が把握しながら変更を加える」という前提があります。
+        コンフィグの差分管理や状態確認も、基本的には人の目や手順書に依存しています。
+      </p>
+      <p>
+        Terraformが解決しようとしているのは、この「状態管理と変更適用を人手に依存している」という課題です。
+        構成をコードとして定義し、現在の状態と比較して、必要な変更だけを自動で適用する、という仕組みを提供します。
+      </p>
+    </section>
+
+    <section>
+      <h2>Terraformとは何か</h2>
+      <p>
+        TerraformはHashiCorp社が開発したIaCツールです。
+        インフラの構成を .tf ファイルに記述し、そのコードをもとにクラウドやオンプレミスのリソースを作成・変更・削除できます。
+      </p>
+      <p>
+        「コードでインフラを定義する」という点では、ネットワーク機器のコンフィグファイルと似た感覚で捉えることもできます。
+        ただし、Terraformには「現在の状態を追跡する仕組み」が備わっており、これがネットワーク機器の手動設定管理と大きく異なる点です。
+      </p>
+      <p>
+        また、Terraformは特定のクラウドに限らず、AWS、Azure、GCP、さらにはオンプレミスの一部製品にも対応しています。
+        書き方（HCL: HashiCorp Configuration Language）は共通で、接続先をプロバイダーとして切り替える設計になっています。
+      </p>
+    </section>
+
+    <section>
+      <h2>基本概念の整理</h2>
+
+      <h3>provider（プロバイダー）</h3>
+      <p>
+        Terraformがどのクラウドや製品と通信するかを定義するプラグインです。
+        Azureを使う場合は <code>azurerm</code> というプロバイダーを指定します。
+        ネットワーク機器に例えると、「どのベンダーのSSHドライバーを使うか」に近いイメージです。
+      </p>
+
+      <h3>resource（リソース）</h3>
+      <p>
+        実際に作成・管理するインフラの構成単位です。
+        VNet、サブネット、NSG、VMなどがそれぞれ1つのリソースブロックとして記述されます。
+        ネットワーク機器のコンフィグでいえば、1つのインターフェース設定や1つのACLエントリに相当するイメージです。
+      </p>
+
+      <h3>state（ステート）</h3>
+      <p>
+        Terraformが管理しているリソースの現在の状態を記録したファイル（terraform.tfstate）です。
+        この状態ファイルがあることで、「コードと実際の環境の差分」を検出できます。
+      </p>
+      <p>
+        ネットワーク運用では running-config を手動で保存・管理していましたが、Terraformはこれを自動で追跡します。
+        一方で、ステートファイルを誰かが手動で触ったり、コード外で直接リソースを変更すると、ステートと実態がズレてトラブルになることがあります。
+      </p>
+
+      <h3>plan（プラン）</h3>
+      <p>
+        <code>terraform plan</code> を実行すると、現在のステートとコードの差分を確認できます。
+        「何が作成されるか、何が変更されるか、何が削除されるか」が一覧表示されます。
+      </p>
+      <p>
+        ネットワーク変更手順書でいう「変更前・変更後の比較表」を自動生成してくれるイメージです。
+        実際の変更はこの時点では行われないため、レビュー用のステップとして機能します。
+      </p>
+
+      <h3>apply（アプライ）</h3>
+      <p>
+        <code>terraform apply</code> を実行すると、plan の内容が実際にクラウドへ適用されます。
+        承認フローとして <code>yes</code> の入力が求められるため、意図しない変更が走らないように確認の機会があります。
+      </p>
+      <p>
+        ネットワーク変更でいえば「手順書のコマンド投入」に相当しますが、差分の適用だけを自動で行ってくれる点が大きく異なります。
+      </p>
+    </section>
+
+    <section>
+      <h2>AzureとTerraformの関係</h2>
+      <p>
+        Azureのリソースは、ポータル操作、Azure CLI、ARM/Bicep、そしてTerraformなど複数の方法で作成・管理できます。
+        Terraformを使う場合は <code>azurerm</code> プロバイダーがAzure Resource Manager APIを呼び出す形になります。
+      </p>
+      <p>
+        ネットワークエンジニアがAzureでよく触るVNet、サブネット、NSG、ルートテーブル、VPN Gateway、Private Endpoint なども、
+        それぞれTerraformのリソースブロックとして記述できます。
+      </p>
+      <p>
+        ただし、AzureポータルやCLIで直接変更を加えるとTerraformのステートとズレが生じることがあるため、
+        Terraformで管理すると決めたリソースは極力Terraform経由で操作する運用が望ましいです。
+      </p>
+    </section>
+
+    <section>
+      <h2>今後：TerraformでAzure VNetを作る前に理解したいこと</h2>
+      <p>
+        Terraformの概念を理解した次のステップとして、実際にAzure VNetを作ってみたいと考えています。
+        その前に、自分なりに確認しておきたい点を整理しておきます。
+      </p>
+      <ul>
+        <li>認証方法：Azure CLIログインとサービスプリンシパルの違いと使い分け</li>
+        <li>ステートファイルの置き場所：ローカル保存とAzure Blob Storage（リモートバックエンド）の違い</li>
+        <li>リソースグループとVNetの依存関係：Terraformでの depends_on の考え方</li>
+        <li>変数（variable）とモジュールの基本：同じ構成を使い回すための仕組み</li>
+        <li>terraform destroy の挙動：削除対象と削除順序の確認</li>
+      </ul>
+      <p>
+        これらは実際に手を動かしながら確認する予定です。検証結果は別記事でまとめます。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Terraformはインフラ構成をコードで定義し、状態管理と差分適用を自動化するツールです。
+        ネットワーク機器の手動設定管理に慣れた視点から見ると、「手順書・running-config・コマンド投入」のプロセスを
+        コードと自動化に置き換えたもの、というのが最初の理解の取っ掛かりになりました。
+      </p>
+      <p>
+        provider・resource・state・plan・apply の5つの概念をおさえることで、
+        Terraformが何をしているのかの全体像が見えてきます。
+        今後は実際にAzureリソースを作りながら、理解を深めていきます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

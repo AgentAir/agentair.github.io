@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure StorageのSAS URLで詰まったエラーを整理する - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure StorageのSAS URLで詰まったエラーを整理する</h1>
+    <p>2026-04-30 / Azure / Storage / SAS</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        以前の記事「Azure Private EndpointでStorageへプライベート接続する検証メモ」では、
+        Azure VMからStorage AccountへPrivate Endpoint経由で接続する手順を整理しました。
+        本記事はその続編として、接続確認の過程でSAS URLを使ったアクセスに詰まったエラーを整理したものです。
+      </p>
+      <p>
+        SAS URLでアクセスを試みたとき、エラーが出ても「Private Endpointの問題なのか」「SASの問題なのか」「Storage Firewallの問題なのか」が
+        最初はわかりませんでした。
+        本記事は、その切り分けの考え方と、実際に出たエラーの整理を目的とした個人の検証・学習メモです。
+      </p>
+    </section>
+
+    <section>
+      <h2>SAS URLとは何か</h2>
+      <p>
+        SAS（Shared Access Signature）URLとは、Azure Storageのリソースに対して、
+        期限・権限・スコープを絞った形でアクセスを許可するためのURLです。
+        Storage Account、Container、Blobのいずれかを対象として発行でき、
+        URLを持っていれば認証なしでアクセスできる仕組みです。
+      </p>
+      <p>
+        この性質上、SAS URLは認証情報に近い扱いが必要です。
+        有効期限が切れるまで、URLを知っている人なら誰でもアクセスできてしまうため、
+        公開記事やコードリポジトリには絶対に載せてはいけません。
+        検証メモとしてエラー内容を整理する本記事でも、実際のSAS URLは一切記載しません。
+      </p>
+      <p>
+        SASにはいくつかの種類があります。
+      </p>
+      <ul>
+        <li><strong>Account SAS：</strong>Storage Accountレベルのアクセスを許可。複数のサービスをまたいで使える。</li>
+        <li><strong>Service SAS：</strong>BlobやFileなど特定のサービスにスコープを絞ったSAS。</li>
+        <li><strong>User Delegation SAS：</strong>Microsoft Entra IDの資格情報をもとに発行するSAS。Account Keyを使わないため、よりセキュリティが高い。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>詰まったエラーの一覧</h2>
+      <p>
+        検証の過程で実際に出たエラーをまとめます。
+        いずれも実際のURL、キー、サブスクリプション情報は含んでいません。
+      </p>
+      <ul>
+        <li><strong>AuthenticationFailed</strong> — SASの署名が正しく検証できなかった</li>
+        <li><strong>PublicAccessNotPermitted</strong> — Storage Account側でパブリックアクセスが禁止されている</li>
+        <li><strong>AuthorizationPermissionMismatch</strong> — SASに必要な操作権限が不足している</li>
+        <li><strong>Signature did not match</strong> — 署名生成に使った情報と実際のリクエストが一致しない</li>
+        <li><strong>String to sign used was racwl</strong> — SAS生成時のパラメーター（権限文字列）の問題</li>
+      </ul>
+      <p>
+        これらは一見似ていますが、原因のレイヤーが異なります。以降で分けて整理します。
+      </p>
+    </section>
+
+    <section>
+      <h2>AuthenticationFailed の整理</h2>
+      <p>
+        <code>AuthenticationFailed</code> はSASの署名検証に失敗したことを示すエラーです。
+        Storageへのネットワーク到達はできているが、認証の段階で弾かれている状態です。
+      </p>
+      <p>主な原因として次の点を確認しました。</p>
+      <ul>
+        <li><strong>SASの有効期限切れ：</strong>生成時に設定した期限を過ぎていないか確認する。</li>
+        <li><strong>URLのコピー不備：</strong>SAS URLをコピーする際に末尾が途切れていたり、改行が混入していることがある。</li>
+        <li><strong>対象リソースの不一致：</strong>Container向けに生成したSASをBlob単体のURLに使うなど、スコープが合っていない場合に発生する。</li>
+        <li><strong>時刻ずれ：</strong>クライアントとAzureの時刻が大きくずれているとSANの検証に失敗する場合がある。</li>
+        <li><strong>署名に使ったAccount Keyの問題：</strong>Storage AccountのKey1/Key2のどちらで生成したかを確認する。</li>
+      </ul>
+      <p>
+        このエラーはPrivate Endpointの疎通とは別の問題です。
+        ネットワークが正常でも、SASの内容が正しくなければこのエラーは発生します。
+      </p>
+    </section>
+
+    <section>
+      <h2>PublicAccessNotPermitted の整理</h2>
+      <p>
+        <code>PublicAccessNotPermitted</code> は、Storage Account側でパブリックアクセスが無効になっている場合に発生することがあるエラーです。
+        エラー名だけ見ると「ネットワークが壊れている」「アクセスが完全に拒否されている」と思いがちですが、
+        必ずしもそうではありません。
+      </p>
+      <p>
+        このエラーが出た場合に確認した点は次のとおりです。
+      </p>
+      <ul>
+        <li><strong>ContainerのPublicアクセスレベル：</strong>ContainerのPublicアクセスが「プライベート」に設定されていると、SASなしの匿名アクセスは拒否される。SASを使っていても、URLの組み立て方によってはこのエラーが出ることがある。</li>
+        <li><strong>Storage AccountのAllowBlobPublicAccess設定：</strong>Account全体でパブリックBlobアクセスを禁止している場合、Container側の設定に関わらずパブリックアクセスは拒否される。</li>
+        <li><strong>Private Endpoint経由でアクセスできているか：</strong>DNS解決が正しくプライベートIPを返しているかを確認してから、権限の問題として切り分ける。</li>
+      </ul>
+      <p>
+        ネットワークの問題と権限の問題を同時に疑うと混乱するため、まずDNS解決とネットワーク到達性を確認してから、
+        Storage Account側の設定を確認するという順序が有効でした。
+      </p>
+    </section>
+
+    <section>
+      <h2>AuthorizationPermissionMismatch の整理</h2>
+      <p>
+        <code>AuthorizationPermissionMismatch</code> は、SASに与えられた権限が、実行しようとした操作に対して不足していることを示すエラーです。
+        認証（誰か）は通っているが、認可（何ができるか）で弾かれている状態です。
+      </p>
+      <p>
+        SASを生成する際には、許可する操作を明示的に指定します。
+        主な操作の種類は次のとおりです。
+      </p>
+      <ul>
+        <li><strong>r（Read）：</strong>読み取り。BlobのダウンロードやContainerの参照など。</li>
+        <li><strong>l（List）：</strong>一覧表示。Container内のBlobリストを取得するなど。</li>
+        <li><strong>w（Write）：</strong>書き込み。既存Blobへの上書きなど。</li>
+        <li><strong>c（Create）：</strong>新規作成。新しいBlobを作成するなど。</li>
+        <li><strong>d（Delete）：</strong>削除。</li>
+      </ul>
+      <p>
+        例えば、一覧表示（l）の権限なしにContainerのBlob一覧を取得しようとしたり、
+        書き込み（w）の権限なしにBlobをアップロードしようとするとこのエラーが出ます。
+      </p>
+      <p>
+        また、SASのスコープも重要です。Container SASはそのContainer内に限定されるため、
+        別のContainerへのアクセスには使えません。
+        Account SASであれば複数のContainerをまたいで使えますが、権限の範囲が広くなるため、
+        必要最小限のスコープと権限で生成することが望ましいです。
+      </p>
+    </section>
+
+    <section>
+      <h2>Signature did not match / String to sign の整理</h2>
+      <p>
+        <code>Signature did not match</code> や <code>String to sign used was racwl</code> のようなエラーは、
+        SAS生成時に構築した「署名の文字列（String-to-Sign）」と、
+        実際のリクエストから計算された文字列が一致しないことを示しています。
+      </p>
+      <p>
+        確認した点は次のとおりです。
+      </p>
+      <ul>
+        <li><strong>APIバージョンの不一致：</strong>SASを生成したSDKやツールのバージョンと、リクエスト時のAPIバージョンが合っていないと署名の計算方法がずれる場合がある。</li>
+        <li><strong>権限文字列の順序：</strong>SASの権限は決まった順序（racwdlxyti など）で並べる必要がある。ツールで生成する分には問題ないが、手動で組み立てた場合に順序が崩れることがある。</li>
+        <li><strong>URLエンコードの問題：</strong>SAS URLを別のツールやスクリプトを通じて加工する際に、エンコードが変わって署名と合わなくなる場合がある。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>切り分けの考え方</h2>
+      <p>
+        SAS URLで問題が起きたとき、Private Endpoint、DNS、Storage Firewall、SAS、RBACを混ぜて考えると原因の特定が難しくなります。
+        次の順序で確認することで、どのレイヤーの問題かを絞り込みやすくなりました。
+      </p>
+      <ol>
+        <li>
+          <strong>名前解決の確認：</strong>
+          <code>nslookup</code> や <code>Resolve-DnsName</code> で Storage Account のFQDNがプライベートIPに解決されているかを確認する。
+          パブリックIPが返ってきている場合は、Private DNSゾーンやDNSの設定を見直す。
+        </li>
+        <li>
+          <strong>ネットワーク到達性の確認：</strong>
+          VMからStorage AccountのプライベートエンドポイントIPへの疎通を確認する（Pingは使えないため、ポート443へのTCP接続で確認する）。
+          到達できない場合はNSGやRoute Tableを確認する。
+        </li>
+        <li>
+          <strong>Storage Firewallの確認：</strong>
+          Storage AccountのFirewall設定で、接続元のVNetやサブネットが許可されているかを確認する。
+          Private Endpointを使う場合は「選択したネットワーク」に対象のVNetが含まれていることを確認する。
+        </li>
+        <li>
+          <strong>SASの権限・期限・スコープの確認：</strong>
+          SASの有効期限、操作権限（r/l/w/c/d）、スコープ（Account/Container/Blob）が
+          実行しようとしている操作に対して正しいかを確認する。
+        </li>
+      </ol>
+      <p>
+        エラーメッセージが「認証」や「権限」に関するものであれば、まずネットワーク層を確認して問題なしとしてから、
+        SASの内容を見直すという順序が有効です。
+      </p>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+      <ul>
+        <li>
+          <strong>レイヤーを混ぜて考えない：</strong>
+          Private Endpoint（ネットワーク）、DNS（名前解決）、Storage Firewall（アクセス制御）、SAS（認証・認可）、RBAC（ロールベース認可）は
+          それぞれ独立した問題として切り分けることが重要。
+          「繋がらない」の原因は一つではない。
+        </li>
+        <li>
+          <strong>エラーを「ネットワーク」「認証」「権限」に分類する：</strong>
+          エラー名だけで判断せず、ネットワーク問題なのか、認証の失敗なのか、権限の不足なのかを分類することで、
+          確認するべき設定箇所が絞り込める。
+        </li>
+        <li>
+          <strong>SAS URLは絶対に公開しない：</strong>
+          SAS URLはStorageリソースへの鍵そのものです。
+          Gitリポジトリへのコミットはもちろんのこと、ブログ記事、Slackメッセージ、スクリーンショットにも含めないように注意する。
+          検証メモとして記録する場合も、URLそのものではなくエラー内容や設定の構造を記録する。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Azure StorageのSAS URLエラーは、ネットワーク、認証、権限という複数のレイヤーが絡み合っているため、
+        最初は原因の特定に時間がかかりました。
+        しかし、切り分けの順序を決めて一層ずつ確認していくことで、どこに問題があるかを特定しやすくなりました。
+      </p>
+      <p>
+        今後は、Storage Firewall、Private Endpoint、RBAC、SASの関係をさらに整理し、
+        TerraformでStorageとPrivate Endpointをまとめて構築する検証につなげていきたいと考えています。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Pagesブログを10記事まで育てて整理した作業ログ - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>GitHub Pagesブログを10記事まで育てて整理した作業ログ</h1>
+    <p>2026-04-30 / GitHub Pages / Blog Operation / Study Log</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        GitHub Pagesを使って個人の技術ブログを作成しました。
+        最初は手書きのHTML/CSSだけで始め、記事が10本まで増えたタイミングで
+        トップページや記事一覧ページの整理、README更新、CSSの改善を行いました。
+      </p>
+      <p>
+        本記事は、その一連の作業を振り返る個人の作業ログです。
+        「最初から完璧な構成を作ること」ではなく、「まず動かして、後から整える」という流れで進めたことのメモを残します。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に作った構成</h2>
+      <p>
+        ブログの初期構成はシンプルにしました。
+        フレームワークやビルドツールは使わず、手書きのHTML/CSSで始めています。
+      </p>
+      <ul>
+        <li><code>index.html</code> — トップページ</li>
+        <li><code>articles.html</code> — 記事一覧</li>
+        <li><code>about.html</code> — ブログと運営者について</li>
+        <li><code>css/style.css</code> — 全ページ共通のスタイル</li>
+        <li><code>articles/*.html</code> — 記事ファイル</li>
+      </ul>
+      <p>
+        GitHubのリポジトリをそのままGitHub Pagesとして公開する構成のため、
+        サーバーの設定やビルドステップは不要です。
+        pushするだけで反映されます。
+      </p>
+    </section>
+
+    <section>
+      <h2>10記事まで作成した理由</h2>
+      <p>
+        記事数を10本という区切りに設定したのは、次のような理由からです。
+      </p>
+      <ul>
+        <li>
+          <strong>ブログとして形にするため：</strong>
+          1〜2本だけでは「動いているブログ」という感覚が持ちにくい。
+          複数のカテゴリにまたがった記事が揃うことで、ブログとしての骨格ができると考えた。
+        </li>
+        <li>
+          <strong>複数カテゴリを埋めるため：</strong>
+          Azure、GitHub Pages、Claude Code、Terraform、AI学習ログなど、
+          このブログで扱いたいテーマをひと通りカバーするために10本という量が必要だった。
+        </li>
+        <li>
+          <strong>外部発信の土台を作るため：</strong>
+          GitHubプロフィールやSNSにブログURLを載せる前に、
+          ある程度の記事数を揃えておきたかった。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>10記事作成後に整理したこと</h2>
+      <p>
+        記事が10本になった時点で、読みやすさとメンテナンス性を改善するための整理を行いました。
+      </p>
+      <ul>
+        <li>
+          <strong>index.html の整理：</strong>
+          最新記事を全件表示していたトップページを、おすすめ記事3件・最新記事3件・全記事リンクの構成に変更しました。
+          記事カードだらけで縦に長くなっていた状態から、入口ページとして見やすい構成になりました。
+        </li>
+        <li>
+          <strong>articles.html のカテゴリ別整理：</strong>
+          時系列の単純一覧から、Azure/Cloud・Terraform/IaC・GitHub/Blog Operation・AI/Study Log・Careerの5カテゴリに再編しました。
+          記事数が増えても探しやすくなります。
+        </li>
+        <li>
+          <strong>README.md の整備：</strong>
+          2行しかなかったREADMEを、ブログの概要・公開URL・テーマ・サイト構成・運用方針・今後の予定を含む形に更新しました。
+          リポジトリを見た人にブログの目的が伝わるようになりました。
+        </li>
+        <li>
+          <strong>css/style.css へのコードブロックスタイル追加：</strong>
+          技術記事内の <code>pre</code> / <code>code</code> タグに対するスタイルが未定義だったため、
+          コードブロック用のスタイル（濃い背景・等幅フォント・横スクロール対応）を末尾に追加しました。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Claude Codeを使った運用フロー</h2>
+      <p>
+        記事の作成と更新にClaude Codeを活用しました。
+        自分が使っているフローは次のとおりです。
+      </p>
+      <ol>
+        <li>記事のタイトル・タグ・概要・含めたい内容・禁止事項をClaude Codeに指示する</li>
+        <li>Claude Codeが記事HTML・articles.html・index.htmlの3ファイルを生成・編集する</li>
+        <li><code>git diff</code> で変更内容を自分の目で確認する</li>
+        <li>問題がなければ <code>git add</code> / <code>git commit</code> / <code>git push</code> でGitHubへ反映する</li>
+      </ol>
+      <p>
+        Claude Codeが生成した内容でも、commitする前に必ず確認しています。
+        機密情報の混入がないか、リンクのパスが正しいか、意図した内容になっているかを
+        git diffで見てからcommitするようにしています。
+      </p>
+    </section>
+
+    <section>
+      <h2>やってよかったこと</h2>
+      <ul>
+        <li>
+          <strong>GitHub Pagesの仕組みを理解できた：</strong>
+          リポジトリ名とブランチの設定、相対パスの考え方、pushからの反映タイミングなど、
+          手を動かすことで理解できた部分が多かった。
+        </li>
+        <li>
+          <strong>Git / commit / push の流れを実際に使えた：</strong>
+          資格学習や業務でGitの概念は知っていたが、
+          自分のブログを通じて日常的に使う習慣ができた。
+        </li>
+        <li>
+          <strong>Claude Codeでブログ更新を効率化できた：</strong>
+          記事追加のたびに3ファイルを手編集する手間が減り、
+          内容の確認と指示に集中できるようになった。
+        </li>
+        <li>
+          <strong>自分の学習ログを外に出せる場所ができた：</strong>
+          OneNoteに溜まった学習メモをブログ記事として整理することで、
+          アウトプットの習慣がつきやすくなった。
+        </li>
+        <li>
+          <strong>技術検証や詰まった内容を資産化する流れができた：</strong>
+          回り道や失敗も、作業ログとして残せば将来の自分や同じ立場の人に役立つ技術ナレッジになる。
+          この視点を持つようになってから、詰まることへの抵抗感が減った。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>注意したこと</h2>
+      <ul>
+        <li>会社情報や顧客情報を含めない</li>
+        <li>実IPアドレス、認証情報、SAS URLを含めない</li>
+        <li>試験問題の本文や選択肢を転載しない</li>
+        <li>まだ実際に触っていない技術は、一般論だけで記事にしない</li>
+        <li>GitHub Pagesは公開前提であるため、pushする前に内容を確認する</li>
+      </ul>
+      <p>
+        特に最後の点は、Claude Codeを使う場合でも変わりません。
+        ツールが生成した内容であっても、公開前の確認は自分の責任で行う必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>今後の方針</h2>
+      <ul>
+        <li>
+          <strong>当面はGitHub Pagesで運用する：</strong>
+          現状の構成で問題なく動いているため、移行コストをかける必要性は感じていない。
+          Webサーバ構築やAzure Static Web Appsは、必要になったときの検証テーマとして扱う。
+        </li>
+        <li>
+          <strong>実際に検証した内容を中心に記事化する：</strong>
+          手を動かしていない技術の概念記事は最小限にして、
+          実際に詰まった・理解したという体験ベースの記事を積み上げていく。
+        </li>
+        <li>
+          <strong>記事が20〜30本になったらフレームワーク移行を検討する：</strong>
+          AstroやHugoなどへの移行は、記事数が増えて手書きHTMLの管理が辛くなったタイミングで検討する。
+          現時点では移行そのものを検証テーマとして面白いとも考えている。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        最初から完璧なブログ基盤を作ろうとするよりも、まず公開して、記事を増やして、後から整理するという順序で進めた方が、
+        実際に動くものが手元に残りやすいと感じました。
+      </p>
+      <p>
+        回り道も、作業ログとして残せば技術ナレッジになります。
+        Azure、Terraform、GitHub Pagesの検証でつまずいた記録も、
+        後から見返せる形で積み上げることでブログとしての価値が出てきます。
+      </p>
+      <p>
+        今後も実体験ベースでブログを育てていきたいと考えています。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

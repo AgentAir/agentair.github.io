@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude CodeをWindowsに入れてGitHub Pagesブログを更新するまで - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Claude CodeをWindowsに入れてGitHub Pagesブログを更新するまで</h1>
+    <p>2026-04-30 / Claude Code / GitHub / Windows</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        このブログはGitHub Pagesで公開している手書きHTML/CSSの個人ブログです。
+        記事を追加するたびに3つのファイル（記事HTML・articles.html・index.html）を手作業で編集していましたが、
+        Claude Codeを使えばこの作業を効率化できると考えました。
+      </p>
+      <p>
+        今回は実家のPCで作業したため、Claude Code自体のインストールから始める必要がありました。
+        本記事は、その導入から実際にブログを更新してGitHubへpushするまでの流れと、途中で詰まった点を整理した個人の作業メモです。
+      </p>
+    </section>
+
+    <section>
+      <h2>実施した流れ</h2>
+
+      <h3>1. Claude Codeのインストール</h3>
+      <p>
+        Claude CodeはNode.jsのnpmパッケージとして提供されています。
+        インストールはターミナルから以下のコマンドで行いました。
+      </p>
+      <pre><code>npm install -g @anthropic-ai/claude-code</code></pre>
+      <p>
+        インストール自体はエラーなく完了しましたが、この後すぐに問題が発生しました。
+      </p>
+
+      <h3>2. PATH への追加</h3>
+      <p>
+        インストール後に <code>claude</code> コマンドを実行しようとしたところ、認識されませんでした。
+        確認すると、npmのグローバルインストール先（<code>C:\Users\&lt;ユーザー名&gt;\.local\bin</code>）がPATHに含まれていないことが原因でした。
+      </p>
+      <p>
+        Windowsの「システムの詳細設定」からユーザー環境変数のPATHに該当パスを追加し、
+        ターミナルを再起動することで <code>claude</code> コマンドが認識されるようになりました。
+      </p>
+
+      <h3>3. GitHubリポジトリのclone</h3>
+      <p>
+        ブログのリポジトリをローカルにcloneしました。
+        cloneしたフォルダ（agentair.github.io）の中に移動してから、Claude Codeを起動しました。
+        起動時にリポジトリのルートにいることを確認してから操作を始めることが重要でした。
+      </p>
+
+      <h3>4. Claude Codeでの作業</h3>
+      <p>
+        Claude Codeにリポジトリの構成を確認させ、既存の記事ページのHTML構造を把握させました。
+        その後、記事のタイトル・タグ・概要・本文の要件を指示することで、
+        記事HTML・articles.html・index.htmlの3ファイルをまとめて編集させました。
+      </p>
+
+      <h3>5. 差分確認とpush</h3>
+      <p>
+        Claude Codeが生成したファイルを <code>git diff</code> で確認し、意図しない変更や機密情報が含まれていないかチェックしました。
+        問題がないことを確認した後、<code>git add</code> / <code>git commit</code> / <code>git push</code> でGitHubへ反映しました。
+      </p>
+    </section>
+
+    <section>
+      <h2>詰まったポイント</h2>
+
+      <h3>claude コマンドが認識されなかった</h3>
+      <p>
+        npmでグローバルインストールしても <code>claude</code> コマンドが使えない場合、
+        インストール先のパスがPATHに含まれていないことが原因です。
+        Windowsの場合、<code>C:\Users\&lt;ユーザー名&gt;\.local\bin</code> をユーザー環境変数のPATHに追加し、
+        ターミナルを再起動することで解決しました。
+      </p>
+
+      <h3>fatal: not a git repository が出た</h3>
+      <p>
+        Gitコマンドをリポジトリのフォルダ外で実行したため、<code>fatal: not a git repository</code> というエラーが出ました。
+        <code>pwd</code> コマンドで現在地を確認し、cloneしたフォルダの中にいることを確認してから再実行して解決しました。
+        作業前に現在のディレクトリを確認する習慣が重要だと改めて感じました。
+      </p>
+
+      <h3>Author identity unknown が出た</h3>
+      <p>
+        <code>git commit</code> を実行したところ、Author identity unknown というエラーが出てコミットできませんでした。
+        初めて使うPCでGitのユーザー情報が設定されていないことが原因でした。
+        以下のコマンドでグローバル設定を行い、解決しました。
+      </p>
+      <pre><code>git config --global user.name "Your Name"
+git config --global user.email "your@example.com"</code></pre>
+
+      <h3>git push 時にGitHub認証が必要だった</h3>
+      <p>
+        git push を実行したところ、GitHub認証を求めるフローが走りました。
+        GitHubはパスワード認証を廃止しているため、Personal Access Token（PAT）またはGitHub CLIによる認証が必要です。
+        認証情報はコードやファイルに直接書かず、認証フローを通じて設定しました。
+      </p>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+
+      <h3>Claude Codeが便利でもGitの基本は必要</h3>
+      <p>
+        Claude Codeがファイルの生成・編集を自動化してくれても、
+        <code>git add</code> / <code>git commit</code> / <code>git push</code> の一連の操作や、
+        エラーの意味を理解するためのGit基礎知識は必要です。
+        ツールに任せる部分と自分で理解しておく部分を分けて考えることが重要です。
+      </p>
+
+      <h3>作業前にpwdで現在地を確認する</h3>
+      <p>
+        Gitコマンドはリポジトリのフォルダ内で実行する必要があります。
+        ターミナルを開いたときにどこにいるかを意識していないと、意図しないディレクトリでコマンドを実行してエラーになります。
+        特に複数の作業を同時に行うときは、<code>pwd</code> で現在地を確認する習慣をつけました。
+      </p>
+
+      <h3>Claude Codeが作った内容もgit diffで確認する</h3>
+      <p>
+        Claude Codeが生成したファイルだからといって、そのままcommitするのではなく、
+        <code>git diff</code> で変更内容を自分の目で確認することが大切です。
+        意図しない変更が混入していないか、不要な内容が含まれていないかをチェックしてからcommitするようにしました。
+      </p>
+
+      <h3>公開前に機密情報が入っていないか確認する</h3>
+      <p>
+        GitHub Pagesは公開リポジトリであるため、pushした内容はそのままインターネット上に公開されます。
+        会社情報、顧客情報、実IPアドレス、認証情報、SAS URLなどが含まれていないかを
+        push前に必ず確認することを原則としています。
+      </p>
+
+      <h3>記事追加のたびに編集するファイルは3つある</h3>
+      <p>
+        このブログに記事を追加する場合、必ず編集が必要なファイルは次の3つです。
+      </p>
+      <ul>
+        <li><code>articles/&lt;新記事&gt;.html</code>（記事本文：新規作成）</li>
+        <li><code>articles.html</code>（記事一覧：先頭にカード追加）</li>
+        <li><code>index.html</code>（トップページの最新記事：先頭にカード追加）</li>
+      </ul>
+      <p>
+        この3ファイルの編集をClaude Codeにまとめて依頼することで、手作業より効率よく更新できるようになりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>今後の運用方針</h2>
+
+      <h3>Claude Codeへの指示を明確にする</h3>
+      <p>
+        Claude Codeに記事を作らせる際は、タイトル・タグ・概要・含めたい内容・禁止事項をセットで指示するようにしました。
+        あいまいな指示だと、意図しない内容が含まれる可能性があるためです。
+      </p>
+
+      <h3>生成されたHTMLを確認してからcommitする</h3>
+      <p>
+        Claude Codeが生成したHTMLは、commitする前に <code>git diff</code> で内容を確認します。
+        特に、リンクのパス（<code>../</code> が必要な部分など）や機密情報の混入がないかを重点的にチェックします。
+      </p>
+
+      <h3>実際に検証してから記事にする</h3>
+      <p>
+        Terraformのようにまだ実機で試していない技術については、概念整理の記事は書けますが、
+        検証メモや手順メモは実際に手を動かしてから書くようにします。
+        実際に詰まった点こそが、将来の自分や同じ立場の読者に役立つ内容だと考えているためです。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Claude Codeを使うことで、GitHub Pagesブログの記事追加作業を大幅に効率化できました。
+        ただし、導入時のPATH設定、Gitのユーザー設定、GitHub認証といったセットアップ手順は
+        自分で理解して対処する必要があります。
+      </p>
+      <p>
+        ツールに頼りすぎず、生成された内容を自分の目で確認してからpushするフローを維持することが、
+        品質と安全性を保つために重要だと感じました。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

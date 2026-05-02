@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodexでGitHub Pagesブログを安全に更新する実践手順 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>CodexでGitHub Pagesブログを安全に更新する実践手順</h1>
+    <p>2026-05-03 / Codex / GitHub Pages / Blog Operation</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Codexを使うと、GitHub Pagesで公開している静的HTMLブログの更新をかなり速く進められます。
+        ただし、公開リポジトリを直接扱う以上、最初から大きな編集を任せるのではなく、小さく確認しながら進めることが重要です。
+      </p>
+      <p>
+        この記事では、GitHub Pagesブログをローカルにcloneしてから、Codexに構成確認や記事追加を依頼し、差分を見ながら安全に更新する手順を整理します。
+      </p>
+    </section>
+
+    <section>
+      <h2>背景</h2>
+      <p>
+        対象は、GitHub Pagesで公開している手書きHTML/CSSのブログです。
+        最初にリポジトリをローカル環境へcloneし、作業前に <code>git status</code> で作業ツリーの状態を確認しました。
+      </p>
+      <p>
+        その時点では、Codexにいきなりファイル編集を任せず、まず既存のHTML構造、記事一覧、トップページ、記事テンプレートの関係だけを確認させました。
+        どのファイルを触る必要があるかを先に把握してから、実際の編集に進むためです。
+      </p>
+    </section>
+
+    <section>
+      <h2>結論（先に）</h2>
+      <p>
+        Codexでブログを安全に更新する基本は、作業範囲を小さく決め、編集前後に差分を確認し、commit単位を小さく保つことです。
+      </p>
+      <ul>
+        <li>作業前に <code>git status</code> で作業ツリーを確認する</li>
+        <li>Codexには最初から編集させず、まず構成確認だけを依頼する</li>
+        <li>編集対象ファイルを明示し、CSSや既存構造を不用意に変更しない</li>
+        <li><code>git diff</code> と <code>git diff --cached</code> で差分を確認する</li>
+        <li>公開禁止情報を入れず、commit単位を小さくする</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>実際の手順</h2>
+      <p>
+        今回の作業では、まずGitHub Pagesブログのリポジトリをローカルにcloneし、現在の状態を確認しました。
+        作業ツリーが想定外に汚れていると、Codexが加えた変更と既存の変更を切り分けにくくなります。
+      </p>
+      <pre><code>git status</code></pre>
+      <p>
+        次に、Codexへ既存構成の確認だけを依頼しました。
+        この段階では、記事の追加やCSS変更は行わず、トップページ、記事一覧、個別記事、テンプレートの役割を把握することに絞りました。
+      </p>
+      <p>
+        その後、運用ルールを <code>README.md</code> に追加しました。
+        Codexへ任せてよい作業、任せない作業、公開禁止情報、commit前の確認項目を明文化しておくと、次回以降の依頼も再現しやすくなります。
+      </p>
+      <p>
+        記事追加は、いきなり大きく増やすのではなく、小さく試しました。
+        既存のHTML構造に合わせて個別記事を1本追加し、<code>articles.html</code> と <code>index.html</code> に必要なリンクだけを追加します。
+      </p>
+      <p>
+        さらに、記事作成を繰り返しやすくするために <code>articles/template.html</code> を作成し、Codexへ記事作成を依頼するための <code>docs/codex-article-prompt.md</code> も作成しました。
+        ただし、仕組みを大きく変えるのではなく、既存の静的HTML運用の範囲に収めました。
+      </p>
+      <pre><code>git diff
+git add articles/2026-05-codex-blog-workflow.html articles.html index.html
+git diff --cached</code></pre>
+    </section>
+
+    <section>
+      <h2>重要ポイント</h2>
+      <p>
+        Codexを使うときは、依頼内容を具体的にするほど安全に進めやすくなります。
+        特に公開ブログでは、編集してよいファイルと編集してはいけないファイルを明示することが重要です。
+      </p>
+      <ul>
+        <li>CSS変更なしで既存HTML構造を維持する</li>
+        <li>記事追加、一覧追加、トップページ追加を分けて確認する</li>
+        <li>差分確認では、意図しないファイルが含まれていないかを見る</li>
+        <li>commitは「記事1本追加」「運用ルール追加」のように小さくする</li>
+        <li>会社情報、顧客情報、実IP、認証情報、SAS URL、試験問題本文は入れない</li>
+      </ul>
+      <p>
+        Codexは文章やHTMLを素早く作れますが、公開してよい内容かどうかの最終判断は人間が行う必要があります。
+        特に検証ログやエラー例を書く場合は、固有名詞や値を一般化してから公開します。
+      </p>
+    </section>
+
+    <section>
+      <h2>よくある失敗</h2>
+      <p>
+        よくある失敗は、便利だからといって最初から大規模改修を依頼してしまうことです。
+        記事追加のつもりが、CSS、ナビゲーション、既存記事の文面まで変わると、レビューが難しくなります。
+      </p>
+      <ul>
+        <li>作業前の <code>git status</code> を確認しない</li>
+        <li>編集してよいファイルを指定しない</li>
+        <li><code>git diff</code> を見ずにcommitする</li>
+        <li>複数の目的を1つのcommitに混ぜる</li>
+        <li>検証ログに公開禁止情報を残したまま記事化する</li>
+      </ul>
+      <p>
+        失敗を避けるには、Codexに「まず確認だけ」「次に1ファイルだけ」「最後に一覧へリンク追加」のように段階を分けて依頼するのが有効です。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        CodexでGitHub Pagesブログを更新するときは、小さく始めて、差分を見て、必要な分だけcommitする流れが基本です。
+        ローカルにcloneし、<code>git status</code> で状態を確認し、構成確認から始めることで、意図しない変更を減らせます。
+      </p>
+      <p>
+        <code>articles/template.html</code> と <code>docs/codex-article-prompt.md</code> のような最小限の型を用意しておくと、次の記事追加も再現しやすくなります。
+        ただし、公開禁止情報を入れないこと、大規模改修にしないこと、差分確認を省略しないことは毎回守るべきです。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodexでGitHub Pagesブログを安全に保守するための初期導入メモ - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>CodexでGitHub Pagesブログを安全に保守するための初期導入メモ</h1>
+    <p>2026-05-03 / Codex / GitHub Pages / Blog Operation</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        GitHub Pagesで公開している手書きHTML/CSSブログを、Codexで安全に保守できるようにした初期導入メモです。
+        目的は、今後別のPCや別のタイミングでも同じ流れを再現できるようにすることです。
+      </p>
+      <p>
+        Codexに任せれば作業は速くなりますが、公開リポジトリを扱う以上、最初から大きく任せすぎないことが重要だと感じました。
+        この記事では、小さく確認しながら進めるための流れを整理します。
+      </p>
+    </section>
+
+    <section>
+      <h2>まずリポジトリをcloneする</h2>
+      <p>
+        最初に、GitHub Pagesブログのリポジトリをローカル環境へcloneしました。
+        Codexを使う前に、作業する場所が正しいリポジトリであることを確認しておく必要があります。
+      </p>
+      <pre><code>git clone https://github.com/AgentAir/agentair.github.io.git
+cd agentair.github.io</code></pre>
+      <p>
+        clone後は、ブログのトップページ、記事一覧、個別記事、共通CSSがどこにあるかを把握してから作業を始めました。
+        このブログでは、トップページ、記事一覧、About、記事HTML、共通CSSというシンプルな構成で管理しています。
+      </p>
+    </section>
+
+    <section>
+      <h2>working tree cleanを確認する</h2>
+      <p>
+        Codexに作業を頼む前に、まず <code>git status</code> を実行して working tree clean を確認しました。
+        既に変更がある状態で作業を始めると、どの差分が自分の変更で、どの差分がCodexの変更なのか分かりにくくなります。
+      </p>
+      <pre><code>git status</code></pre>
+      <p>
+        変更がある場合は、内容を確認してから次に進むようにします。
+        特に公開ブログでは、意図しないファイルが混ざっていないかを最初に見ることが大事です。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初は編集させず構成確認だけにする</h2>
+      <p>
+        Codexを起動してすぐに記事追加や修正を任せるのではなく、最初はファイル編集をさせず、リポジトリ構成の確認だけを依頼しました。
+        Home、Articles、About、articles配下の記事がそれぞれ何を担当しているかを整理してもらいました。
+      </p>
+      <p>
+        この段階で、記事追加時に触るファイルや、公開してはいけない情報も確認しました。
+        いきなり大規模改修を始めず、まず読み取りだけで全体像をそろえるのが安全です。
+      </p>
+    </section>
+
+    <section>
+      <h2>README.mdだけを小さく更新する</h2>
+      <p>
+        次に、Codexで安全に保守するための運用ルールを <code>README.md</code> だけに追記しました。
+        いきなり複数のHTMLやCSSを同時に変更するのではなく、編集対象を1ファイルに絞りました。
+      </p>
+      <p>
+        追記した内容は、Codex利用時の基本方針、記事追加時に更新するファイル、公開禁止情報、Codexに任せる作業と任せない作業、commit前チェック項目です。
+        小さい変更であれば、差分確認もしやすく、問題があった場合の切り戻しも簡単です。
+      </p>
+    </section>
+
+    <section>
+      <h2>差分を確認してからcommitする</h2>
+      <p>
+        Codexが編集した後は、必ず <code>git diff</code> で差分を確認しました。
+        commit対象に入れた後も、<code>git diff --cached</code> で staged の内容を確認します。
+      </p>
+      <pre><code>git diff
+git add README.md
+git diff --cached</code></pre>
+      <p>
+        確認する観点は、意図したファイルだけが変更されていること、公開禁止情報が含まれていないこと、文章の意味が変わりすぎていないことです。
+        差分確認を省略すると、Codexの出力をそのまま公開してしまうリスクがあります。
+      </p>
+    </section>
+
+    <section>
+      <h2>commit / pushする</h2>
+      <p>
+        差分に問題がないことを確認してから、commitしてGitHubへpushしました。
+        GitHub Pagesではpush後に公開ページへ反映されるため、commit前の確認がそのまま公開前チェックになります。
+      </p>
+      <pre><code>git commit -m "Add Codex maintenance rules"
+git push</code></pre>
+      <p>
+        commitメッセージは、何を変更したか分かる短い内容にしました。
+        作業ログとして後から見返せるように、1回のcommitに無関係な変更を混ぜないことも意識します。
+      </p>
+    </section>
+
+    <section>
+      <h2>Codexに任せる作業と任せない作業を分ける</h2>
+      <p>
+        Codexには、記事HTMLの作成、一覧カードの追加、リンク確認、誤字脱字の確認のような作業を任せやすいです。
+        一方で、公開してよい内容かどうかの最終判断は自分で行う必要があります。
+      </p>
+      <ul>
+        <li>任せる作業は、HTML作成、リンク整理、文章の読みやすさ確認などにする</li>
+        <li>任せない作業は、公開可否の判断、実案件情報の扱い、試験問題本文の扱いなどにする</li>
+        <li>技術的に断定する内容は、必要に応じて公式情報を確認してから公開する</li>
+      </ul>
+      <p>
+        役割を分けておくと、Codexを便利に使いながら、公開ブログとしての安全性も保ちやすくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>公開禁止情報を入れない</h2>
+      <p>
+        公開リポジトリには、会社情報、顧客情報、実IP、認証情報、SAS URL、試験問題本文を入れません。
+        コマンド例やエラー例を書くときも、環境固有の値が残っていないか確認します。
+      </p>
+      <p>
+        検証ログを書く場合は、実際に起きたことをそのまま貼るのではなく、公開してよい形に一般化してから記事にします。
+        自分用メモとして便利でも、公開ブログに置くべきではない情報はあります。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        CodexでGitHub Pagesブログを保守するときは、最初から大きく改修しないことが大切です。
+        clone、<code>git status</code>、構成確認、小さなREADME更新、<code>git diff</code>、commit / push という順番で進めると、変更範囲を把握しやすくなります。
+      </p>
+      <p>
+        Codexは作業を速くしてくれますが、公開してよい内容かどうかを判断するのは自分です。
+        小さく始めて、差分を見て、公開禁止情報を入れないという基本を守りながら使っていきます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

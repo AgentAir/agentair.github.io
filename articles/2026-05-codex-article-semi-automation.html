@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codexで記事を半自動生成する方法 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Codexで記事を半自動生成する方法</h1>
+    <p>2026-05-03 / Codex / GitHub Pages / Blog Operation</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        GitHub Pagesで手書きHTML/CSSブログを運用していると、記事を書くたびにHTML構造、一覧カード、トップページの最新記事をそろえる必要があります。
+        毎回手で確認してもよいのですが、同じ作業が続く部分はCodexに任せると効率化できます。
+      </p>
+      <p>
+        この記事では、記事テンプレートとプロンプト雛形を使って、Codexで記事を半自動生成する流れを整理します。
+        目的は、記事作成を速くしつつ、公開前の確認を省略しない運用にすることです。
+      </p>
+    </section>
+
+    <section>
+      <h2>背景 / 目的</h2>
+      <p>
+        このブログでは、個別記事を <code>articles/</code> 配下のHTMLファイルとして管理しています。
+        記事を追加する場合は、記事本文だけでなく、<code>articles.html</code> の記事一覧と <code>index.html</code> の最新記事も更新します。
+      </p>
+      <p>
+        そこで、<code>articles/template.html</code> を記事HTMLの土台にし、<code>docs/codex-article-prompt.md</code> をCodexへの依頼文として使うことにしました。
+        これにより、毎回の指示内容をそろえ、編集してよいファイルや公開禁止情報の確認漏れを減らします。
+      </p>
+    </section>
+
+    <section>
+      <h2>手順</h2>
+      <p>
+        半自動生成では、最初に人間が記事の材料を整理し、その後にCodexへHTML作成と一覧更新を依頼します。
+        すべてを丸投げするのではなく、入力内容と差分確認は自分で行います。
+      </p>
+      <ol>
+        <li><code>docs/codex-article-prompt.md</code> を開き、記事タイトル、公開日、カテゴリ、タグ、目的、入れたい内容を埋める</li>
+        <li>編集してよいファイルを、新規記事HTML、<code>articles.html</code>、<code>index.html</code> に限定してCodexへ依頼する</li>
+        <li>作業後に <code>git status</code> と <code>git diff</code> で、変更ファイルと本文の内容を確認する</li>
+      </ol>
+      <p>
+        記事本文は、<code>articles/template.html</code> の見出し構成をベースにします。
+        そのため、はじめに、背景 / 目的、手順、詰まったポイント、解決方法、まとめという流れを毎回そろえやすくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>詰まったポイント</h2>
+      <p>
+        Codexに記事作成を任せるときに迷いやすいのは、どこまで任せるかです。
+        記事HTMLの作成やカード追加は任せやすい一方で、公開してよい内容かどうかの判断は自分で行う必要があります。
+      </p>
+      <ul>
+        <li>編集対象ファイルを指定しないと、意図しないファイルまで変更される可能性がある</li>
+        <li>最新記事の件数を決めておかないと、トップページが長くなりすぎる</li>
+        <li>検証メモをそのまま渡すと、公開すべきでない情報が混ざる可能性がある</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>解決方法</h2>
+      <p>
+        解決方法は、プロンプト雛形に作業ルールを入れておくことです。
+        毎回同じルールを明記しておけば、Codexに任せる範囲を限定しやすくなります。
+      </p>
+      <ul>
+        <li>記事作成時は、<code>articles/template.html</code> をベースにするよう指定する</li>
+        <li>編集してよいファイルと編集してはいけないファイルを明記する</li>
+        <li>公開禁止情報を入れないこと、作業後に差分確認することを依頼文に含める</li>
+      </ul>
+      <p>
+        また、<code>index.html</code> の最新記事は既存の件数に合わせ、増えすぎる場合は一番古いカードを外す運用にします。
+        これでトップページの見通しを保ちながら、新しい記事への導線を追加できます。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Codexで記事を半自動生成する場合は、テンプレートHTMLとプロンプト雛形を組み合わせると進めやすくなります。
+        人間が記事の目的と入れたい内容を決め、CodexがHTML化と一覧更新を担当する形にすると、作業の分担がはっきりします。
+      </p>
+      <p>
+        ただし、公開前の確認は省略しません。
+        変更ファイル、リンク、CSSパス、公開禁止情報の有無を確認してからcommitすることで、小さく安全に記事作成を効率化できます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

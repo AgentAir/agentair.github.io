@@ -90,6 +90,351 @@ h2 {
   color: #666;
 }
 
+.schedule-page section {
+  overflow: hidden;
+}
+
+.schedule-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.summary-card-primary {
+  border-color: #2563eb;
+  background: #eef5ff;
+}
+
+.summary-card-wide {
+  grid-column: span 2;
+}
+
+.summary-label {
+  display: block;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.summary-card strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.gantt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  color: #475569;
+  margin-bottom: 14px;
+}
+
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eef5ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.range-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.range-button {
+  appearance: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 8px 14px;
+}
+
+.range-button:hover,
+.range-button:focus-visible {
+  border-color: #2563eb;
+  color: #1e40af;
+}
+
+.range-button.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.gantt-scroll,
+.table-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gantt-chart {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.gantt-header,
+.gantt-row {
+  display: grid;
+  grid-template-columns: 170px var(--timeline-width);
+}
+
+.gantt-header {
+  min-height: 36px;
+  border-bottom: 1px solid #dbe3ef;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.gantt-timeline-labels,
+.gantt-track {
+  position: relative;
+  width: var(--timeline-width);
+  min-width: var(--timeline-width);
+}
+
+.gantt-timeline-labels span {
+  position: absolute;
+  top: 7px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.gantt-row {
+  min-height: 70px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gantt-row:last-child {
+  border-bottom: 0;
+}
+
+.gantt-row-label {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  color: #0f172a;
+  font-weight: 700;
+  border-right: 1px solid #dbe3ef;
+  background: #fff;
+}
+
+.gantt-corner {
+  min-height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: #f8fafc;
+}
+
+.gantt-track {
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+  background-size: calc(100% / var(--timeline-days)) 100%;
+  overflow: hidden;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 18px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  z-index: 2;
+  max-width: calc(100% - 8px);
+}
+
+.gantt-bar span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-bar.is-active {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  transform: translateY(-2px);
+}
+
+.gantt-book {
+  background: #2563eb;
+}
+
+.gantt-practice {
+  background: #0f766e;
+}
+
+.gantt-review {
+  background: #7c3aed;
+}
+
+.gantt-terraform {
+  background: #334155;
+}
+
+.gantt-terraform-lab {
+  background: #0f766e;
+}
+
+.gantt-terraform-review {
+  background: #7c3aed;
+}
+
+.gantt-foundation {
+  background: #475569;
+}
+
+.gantt-lab {
+  background: #b45309;
+}
+
+.gantt-expert {
+  background: #6d28d9;
+}
+
+.gantt-today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.schedule-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+.schedule-table th,
+.schedule-table td {
+  border: 1px solid #dbe3ef;
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.schedule-table th {
+  background: #1f2937;
+  color: #fff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.schedule-table th:first-child,
+.schedule-table .cert-name-cell {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.schedule-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.schedule-table .current-row {
+  background: #eef5ff;
+}
+
+.next-cert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.next-cert-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.next-cert-card strong {
+  color: #0f172a;
+}
+
+.next-cert-card small {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .site-header {
+    padding: 36px 18px;
+  }
+
+  .site-header h1 {
+    font-size: 1.9rem;
+  }
+
+  .nav a {
+    display: inline-block;
+    margin: 4px 8px;
+  }
+
+  .gantt-header,
+  .gantt-row {
+    grid-template-columns: 132px var(--timeline-width);
+  }
+
+  .gantt-row-label {
+    font-size: 0.88rem;
+  }
+
+  .gantt-bar {
+    font-size: 0.78rem;
+    padding: 0 8px;
+  }
+
+  .summary-card-wide {
+    grid-column: span 1;
+  }
+}
+
 code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   background: #f0f4f8;

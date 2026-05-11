@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>資格学習スケジュール - Shin Infra Lab</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>資格学習スケジュール</h1>
+    <p>予定を見失わないための資格ロードマップ</p>
+  </header>
+
+  <nav class="nav">
+    <a href="index.html">Home</a>
+    <a href="articles.html">Articles</a>
+    <a href="study-schedule.html">資格スケジュール</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main class="container schedule-page">
+    <section>
+      <h2>現在の学習状況</h2>
+      <div class="schedule-summary-grid">
+        <article class="summary-card summary-card-primary">
+          <span class="summary-label">現在のメイン資格</span>
+          <strong>AZ-104</strong>
+        </article>
+        <article class="summary-card summary-card-wide">
+          <span class="summary-label">現在フェーズ</span>
+          <strong>参考書1周 → 問題集演習</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">平日ペース</span>
+          <strong>15問</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">休日ペース</span>
+          <strong>35問</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">週合計目安</span>
+          <strong>約145問</strong>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>ガントチャート</h2>
+      <div class="gantt-toolbar">
+        <span id="schedule-range">Loading...</span>
+        <span class="today-badge">今日: <time id="today-label"></time></span>
+      </div>
+      <div class="range-controls" aria-label="ガントチャートの表示範囲">
+        <button type="button" class="range-button" data-range="1m">1ヶ月</button>
+        <button type="button" class="range-button" data-range="3m">3ヶ月</button>
+        <button type="button" class="range-button" data-range="6m">6ヶ月</button>
+        <button type="button" class="range-button" data-range="all">全体</button>
+      </div>
+      <div class="gantt-scroll" aria-label="資格学習スケジュールのガントチャート">
+        <div id="gantt-chart" class="gantt-chart"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>予定表</h2>
+      <div class="table-scroll">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>資格</th>
+              <th>フェーズ</th>
+              <th>開始日</th>
+              <th>終了日</th>
+              <th>平日タスク</th>
+              <th>休日タスク</th>
+              <th>メモ</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>今後の候補</h2>
+      <div id="next-certifications" class="next-cert-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+
+  <script src="assets/js/study-schedule.js"></script>
+</body>
+</html>

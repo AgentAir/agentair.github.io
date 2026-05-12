@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Arcは再インストール前にまず状態確認：UbuntuがConnectedだった話 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure Arcは再インストール前にまず状態確認：UbuntuがConnectedだった話</h1>
+    <p>2026-05-13 / Azure / Azure Arc / Sentinel</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Windows 11とUbuntuをAzure Arcで管理し、最終的にはMicrosoft Sentinel / Log Analyticsに接続して
+        ログ収集できる構成を確認していました。
+      </p>
+      <p>
+        先にWindows 11側のAzure Arc再接続が完了したため、次はUbuntu側も同じように
+        Azure Arcを再インストールして再接続し直すつもりでいました。
+        以前のリソースや接続情報が残っているかもしれないので、いったん整理した方が確実だと思っていたためです。
+      </p>
+      <p>
+        ただ、実際に確認してみるとUbuntuはすでにAzure Arcで<code>Connected</code>状態でした。
+        そのため、今回の結論は「再インストールする」ではなく、
+        「まず現在の接続状態を確認し、問題がなければそのまま使う」になりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に考えていたこと</h2>
+      <p>
+        最初の理解では、Windows 11と同じようにUbuntu側もAzure Arcを再インストールし直す必要があると考えていました。
+        Windows側で再接続作業を行った流れがあったため、Ubuntu側も同じ手順でそろえた方がよいと思っていたからです。
+      </p>
+      <p>
+        特に気になっていたのは、Azure Portal上に以前のArcマシンリソースが残っていたり、
+        ローカル側に古い接続情報が残っていたりする可能性でした。
+        Sentinel / Log Analyticsへ進む前に、Arcの状態をきれいにしておきたいという気持ちがありました。
+      </p>
+      <p>
+        ただ、この時点では「きれいにする」ことと「再インストールする」ことを少し同じものとして考えていました。
+        後から振り返ると、ここが今回の学びの入口でした。
+      </p>
+    </section>
+
+    <section>
+      <h2>実際に確認したこと</h2>
+      <p>
+        Ubuntu側で状態を確認したところ、Azure Arcの接続状態はすでに<code>Connected</code>でした。
+        つまり、Azure Arcエージェントは動作していて、Azure側のArcマシンリソースとして認識されている状態です。
+      </p>
+      <p>
+        この状態であれば、再インストールは不要です。
+        むしろ、何も考えずに削除・再接続を行うと、Azure Portal上に別のArcマシンリソースが作成されたり、
+        どのリソースが現在のUbuntuを指しているのか分かりにくくなったりする可能性があります。
+      </p>
+      <p>
+        そのため、接続済みのUbuntuに対して最初にやるべきことは再インストールではなく、
+        <code>azcmagent show</code>で現在の接続情報を確認することだと整理しました。
+      </p>
+    </section>
+
+    <section>
+      <h2>確認コマンド</h2>
+      <p>
+        Ubuntu側では、次のコマンドでAzure Connected Machine Agentの状態を確認します。
+      </p>
+      <pre><code class="language-bash">sudo azcmagent show</code></pre>
+      <p>
+        ここで見るポイントは、単に<code>Connected</code>かどうかだけではありません。
+        Azure Portal上のAzure Arcマシン一覧に表示されている内容と、Ubuntu側の表示内容が一致しているかを確認します。
+      </p>
+      <div class="table-scroll">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>確認項目</th>
+              <th>見る理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Status / Agent Status</td>
+              <td><code>Connected</code>になっているか確認する</td>
+            </tr>
+            <tr>
+              <td>Resource Name</td>
+              <td>Azure Portal上のArcマシン名と一致するか確認する</td>
+            </tr>
+            <tr>
+              <td>Resource Group</td>
+              <td>想定したリソースグループに登録されているか確認する</td>
+            </tr>
+            <tr>
+              <td>Subscription ID</td>
+              <td>誤ったサブスクリプションに登録されていないか確認する</td>
+            </tr>
+            <tr>
+              <td>Tenant ID</td>
+              <td>想定したテナントに接続されているか確認する</td>
+            </tr>
+            <tr>
+              <td>Location</td>
+              <td><code>japaneast</code>など想定リージョンか確認する</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        今回は、Ubuntuがすでに<code>Connected</code>であることを確認できたため、
+        再インストールではなく、これらの接続情報の照合に進めばよいという判断になりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>再インストールが必要なケース</h2>
+      <p>
+        Azure Arcの再インストールや再接続は、最初にやる作業ではなく、
+        状態確認後に必要な場合だけ行う作業だと理解しました。
+        例えば、次のようなケースでは再インストールや再接続を検討します。
+      </p>
+      <ul>
+        <li><code>azcmagent show</code>で<code>Connected</code>ではない</li>
+        <li>Azure Portal側にArcマシンが存在しない</li>
+        <li>異なるSubscription / Resource Group / Tenantに接続されている</li>
+        <li>Azure側のArcリソースを削除したのに、Ubuntu側に古い接続情報だけ残っている</li>
+        <li>エージェント自体が壊れている、または<code>azcmagent</code>コマンドが存在しない</li>
+      </ul>
+      <p>
+        逆に言えば、Azure Portal側のArcマシンとUbuntu側の<code>azcmagent show</code>の情報が一致し、
+        状態も<code>Connected</code>であれば、再インストールする理由はありません。
+      </p>
+    </section>
+
+    <section>
+      <h2>Sentinel / Log Analytics連携へ進む流れ</h2>
+      <p>
+        Azure Arcの接続確認ができたら、次はログ収集の設定に進みます。
+        自分の中では、次の順番で確認していく流れとして整理しました。
+      </p>
+      <pre><code class="language-text">Ubuntu の Azure Arc 接続確認
+  ↓
+Azure Portal の Azure Arc マシン一覧で確認
+  ↓
+Log Analytics Workspace を確認
+  ↓
+Data Collection Rule / DCR を作成
+  ↓
+Azure Monitor Agent / AMA を Arc マシンへ適用
+  ↓
+Log Analytics にログが入るか確認
+  ↓
+Microsoft Sentinel で確認</code></pre>
+      <p>
+        ここで重要なのは、Sentinel側からいきなり考え始めないことです。
+        SentinelはLog Analytics Workspaceに入ってきたログを分析・検知に使う側なので、
+        まずはUbuntuがArcマシンとして正しく認識され、AMAとDCRでログ収集できる状態を作る必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回の学び</h2>
+      <p>
+        今回の一番大きな学びは、Azure Arcは「再インストールすればよい」ではなく、
+        まず現在の状態を確認するものだということです。
+      </p>
+      <ul>
+        <li>Azure Arcは、再インストール前に現在の接続状態を確認する</li>
+        <li><code>Connected</code>なら、再インストールしない方が安全</li>
+        <li>再接続を繰り返すと、Azure Portal上に別リソースが作成される可能性がある</li>
+        <li>Arc管理では、ローカルの<code>azcmagent show</code>とAzure Portal上のリソース情報の一致確認が重要</li>
+        <li>Sentinel連携では、Arc接続確認後にAMA / DCRの設定へ進む</li>
+      </ul>
+      <p>
+        Windows 11側で再接続を行った流れがあったため、Ubuntu側も同じようにやり直すものだと思っていました。
+        しかし、Ubuntuがすでに<code>Connected</code>であれば、やるべきことは再インストールではなく、
+        接続先のSubscription、Resource Group、Tenant、Location、Resource Nameを確認することでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>次にやること</h2>
+      <p>
+        次は、UbuntuがAzure Arcマシンとして正しく見えていることを前提に、
+        Log Analytics Workspace、Data Collection Rule（DCR）、Azure Monitor Agent（AMA）の設定を確認します。
+      </p>
+      <p>
+        そのうえで、Log Analyticsにログが入るかを確認し、最後にMicrosoft Sentinel側でログを検索できるかを見ていきます。
+        Arcの再インストールから始めるのではなく、Arc接続の確認からログ収集設定へ進む、という流れで検証を続けます。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

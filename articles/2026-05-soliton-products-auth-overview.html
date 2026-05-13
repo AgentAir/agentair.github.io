@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soliton製品群の役割整理：FileZen S / SecureBrowser / SmartOn / OneGate / NetAttest EPS の違い - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Soliton製品群の役割整理：FileZen S / SecureBrowser / SmartOn / OneGate / NetAttest EPS の違い</h1>
+    <p>2026-05-13 / Network Security / Authentication / Study Log</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Soliton製品を調べていると、認証、Web分離、ファイル受け渡し、ネットワーク認証など、似た言葉が何度も出てきます。
+        名前だけを追うと、FileZen S、Soliton SecureBrowser、Soliton SecureGateway、SmartOn、OneGate、NetAttest EPS が同じ「セキュリティ製品群」に見えてしまい、どこで使うものなのかが混ざりやすいと感じました。
+      </p>
+      <p>
+        この記事では、単なる製品紹介ではなく、ChatGPTとの対話で自分の理解がどう変わったかを残します。
+        公式仕様や最新の対応範囲は導入時に必ず確認するとして、ここではネットワークエンジニア目線で「何に近いか」「何ではないか」「最後にどう理解したか」を整理します。
+      </p>
+    </section>
+
+    <section>
+      <h2>まず全体像</h2>
+      <p>
+        最初に、自分の中で次のように置き場所を分けると理解しやすくなりました。
+        認証という言葉が出てきても、Windowsログオン、SaaSログイン、Wi-Fi/VPN接続認証では主戦場が違います。
+      </p>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>製品</th>
+              <th>主な役割</th>
+              <th>置き場所のイメージ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FileZen S</td>
+              <td>分離ネットワーク間のファイル受け渡し</td>
+              <td>ファイル受け渡しゲートウェイ</td>
+            </tr>
+            <tr>
+              <td>Soliton SecureBrowser</td>
+              <td>端末にデータを残しにくいセキュアブラウザ</td>
+              <td>端末側で使う専用ブラウザ</td>
+            </tr>
+            <tr>
+              <td>Soliton SecureGateway</td>
+              <td>SecureBrowserの接続先を制御するゲートウェイ</td>
+              <td>DMZなどに置くサーバー/アプライアンス</td>
+            </tr>
+            <tr>
+              <td>SmartOn</td>
+              <td>Windows PCログオンの多要素認証</td>
+              <td>PCログオン強化</td>
+            </tr>
+            <tr>
+              <td>OneGate</td>
+              <td>クラウド型のCA/MFA/SSO/ID認証基盤</td>
+              <td>SaaS、Web、クラウドログインの入口</td>
+            </tr>
+            <tr>
+              <td>NetAttest EPS</td>
+              <td>RADIUS/802.1X/証明書によるネットワーク認証</td>
+              <td>Wi-Fi、VPN、有線LANの認証基盤</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code>端末利用        : SmartOn
+Web/クラウド利用 : OneGate / SecureBrowser
+ネットワーク接続 : NetAttest EPS
+分離環境のファイル移動 : FileZen S
+
+Wi-Fi/AP/VPN装置 -- RADIUS -- NetAttest EPS
+Windows PC       -- MFA ---- SmartOn
+SaaS/Web App     -- SSO/MFA - OneGate
+分離NW A/B       -- File ---- FileZen S</code></pre>
+    </section>
+
+    <section>
+      <h2>FileZen S：FTPサーバか、ファイルサーバか、ファイル受け渡しゲートウェイか</h2>
+      <h3>最初の理解</h3>
+      <p>
+        最初は「ファイルを置いて、別の場所から取る」という動きだけを見て、FTPサーバのようなものかと思いました。
+        あるいは、社内ファイルサーバに承認やログを足したもの、という理解にも寄りました。
+      </p>
+      <h3>途中で修正した点</h3>
+      <p>
+        ただ、自治体NWやインターネット分離の文脈で見ると、普通のファイル共有とは目的が違います。
+        重要なのは、分離されたネットワーク間でファイルを移すときに、承認、ウイルスチェック、無害化連携、ログ、保存期間管理を入れられることです。
+        USBメモリで手渡しする運用を、Web画面とポリシーで置き換えるものに近いと考えると整理しやすくなりました。
+      </p>
+      <h3>最終理解</h3>
+      <p>
+        FileZen Sは、FTPサーバでも通常のファイルサーバでもなく、分離ネットワーク間のファイル受け渡しゲートウェイとして理解するのがよさそうです。
+        ファイルを保管し続ける場所というより、「安全に渡す」「必要な確認を通す」「履歴を残す」ための製品として見ると、役割がはっきりします。
+      </p>
+    </section>
+
+    <section>
+      <h2>SecureBrowser / SecureGateway：Webアプリか、専用ブラウザか、ゲートウェイは何か</h2>
+      <h3>最初の理解</h3>
+      <p>
+        SecureBrowserという名前だけを見ると、ブラウザでアクセスするWebアプリケーションのようにも見えました。
+        しかし実際の理解としては、端末に入れて使う専用ブラウザアプリと捉える方が自然でした。
+      </p>
+      <h3>途中で修正した点</h3>
+      <p>
+        SecureGatewayについても、最初はネットワーク機器、ルータ、プロキシのようなものなのかと考えました。
+        途中で整理すると、SecureBrowserと組み合わせて使うゲートウェイサーバー、または物理/仮想アプライアンスという見方がしっくりきました。
+        NW機器というより、DMZなどに置いてアクセス先や通信を制御する中継点です。
+      </p>
+      <h3>最終理解</h3>
+      <p>
+        SecureBrowserは、端末側で動かすセキュアブラウザです。
+        ダウンロード、コピー、保存などを制御し、端末に業務データを残しにくくする考え方です。
+        SecureGatewayは、そのブラウザの先にある中継・制御ポイントとして理解しました。
+      </p>
+      <p>
+        VDIや画面転送そのものではなく、端末側で専用ブラウザを起動してWebアクセスを制御する、という違いを押さえると混同しにくくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>SmartOn：RADIUSサーバではなくWindowsログオンMFA</h2>
+      <h3>最初の理解</h3>
+      <p>
+        SmartOnは多要素認証を行う製品なので、最初は「つまりRADIUSサーバなのか」と考えました。
+        MFA、証明書、認証サーバという言葉が出てくると、ネットワークエンジニアとしてはRADIUSに寄せて理解したくなります。
+      </p>
+      <h3>途中で修正した点</h3>
+      <p>
+        ここで一度、RADIUSという大きな枠の中にNetAttest EPSがあり、その中にSmartOnがあるような誤解をしそうになりました。
+        しかしSmartOnの中心は、Wi-FiやVPNの接続認証ではなく、Windows PCにログオンするときの本人確認です。
+      </p>
+      <h3>最終理解</h3>
+      <p>
+        SmartOnはRADIUS系の製品ではなく、WindowsログオンMFAの製品として理解します。
+        ICカード、顔認証、指紋、指静脈などで「このPCを使い始める人が本人か」を確認するものです。
+        サーバーソフト、クライアントソフト、PC台数ライセンス、認証デバイスやトークンのライセンスを組み合わせて導入するイメージです。
+      </p>
+      <p>
+        RADIUS系の基本担当は、Soliton製品群の中ではNetAttest EPSです。
+        SmartOnとNetAttest EPSはどちらも認証に関係しますが、入口が「PCログオン」なのか「ネットワーク接続」なのかが違います。
+      </p>
+    </section>
+
+    <section>
+      <h2>OneGate：RADIUSサーバか、CA/SSO/MFA基盤か</h2>
+      <h3>最初の理解</h3>
+      <p>
+        OneGateはクラウド型で、MFAや証明書、SSOに関係するため、最初は「クラウド版のRADIUS系製品なのか」と考えました。
+        さらに、ユーザーや認証を扱うならADサーバのようなものなのか、という方向にも理解が揺れました。
+      </p>
+      <h3>途中で修正した点</h3>
+      <p>
+        整理していくと、OneGateはRADIUSサーバそのもの、ADそのものというより、ADやEntra IDなどと連携しながら使うクラウド型の認証基盤として見た方が自然でした。
+        CA、MFA、SSO、ID認証をまとめる入口であり、利用者がSaaSやWebサービスにログインするときの基盤です。
+      </p>
+      <h3>最終理解</h3>
+      <p>
+        OneGateはクラウド型のCA/MFA/SSO/ID認証基盤です。
+        Wi-FiやVPN認証にも関係しますが、RADIUSの現地受け口はNetAttest EPS-edgeなどと連携する構成として理解するのがよさそうです。
+        つまり、OneGateだけを「RADIUSサーバ」と呼ぶと少し雑になります。
+      </p>
+      <p>
+        SmartOnと機能が一部重なって見えるのは、どちらもMFAや証明書、ログイン制御の言葉を持つからです。
+        ただしSmartOnはWindowsログオン、OneGateはSaaS/クラウド/Webログインが主戦場です。
+      </p>
+    </section>
+
+    <section>
+      <h2>SmartOnとOneGateはなぜ機能がかぶって見えるのか</h2>
+      <p>
+        この2つは、最も混同しやすい組み合わせでした。
+        どちらも認証製品で、MFA、証明書、ログイン制御という用語が出てきます。
+        しかし、使う場面を分けると見通しがよくなります。
+      </p>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>観点</th>
+              <th>SmartOn</th>
+              <th>OneGate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>中心領域</td>
+              <td>Windows PCログオン</td>
+              <td>SaaS、クラウド、Webログイン</td>
+            </tr>
+            <tr>
+              <td>利用者の動き</td>
+              <td>PCを使い始める</td>
+              <td>業務サービスへログインする</td>
+            </tr>
+            <tr>
+              <td>近いもの</td>
+              <td>PCログオン強化、端末本人確認</td>
+              <td>IDaaS、SSO、クラウド認証基盤</td>
+            </tr>
+            <tr>
+              <td>混同しやすい理由</td>
+              <td>MFAや証明書を使う</td>
+              <td>MFAや証明書を使う</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        最終的には、「SmartOnはPCの入口」「OneGateはクラウドサービスの入口」と置くと、自分の中では迷いにくくなりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>NetAttest EPS：基本的なRADIUS系を担当</h2>
+      <p>
+        NetAttest EPSは、ネットワークエンジニアにとって一番イメージしやすい製品でした。
+        Wi-Fi、VPN、有線LANなどの接続時に、AP、無線LANコントローラ、スイッチ、VPN装置からRADIUS認証要求を受ける側です。
+      </p>
+      <p>
+        ここではRADIUS、802.1X、EAP-TLS/EAP-PEAP、プライベートCA、証明書認証といった言葉が中心になります。
+        「この端末・このユーザーをネットワークに入れてよいか」を判断する基盤です。
+      </p>
+      <pre><code>端末
+  |
+  | 802.1X / VPN接続
+  v
+AP / WLC / Switch / VPN装置
+  |
+  | RADIUS
+  v
+NetAttest EPS
+  |
+  | 証明書 / ユーザー情報 / ポリシー確認
+  v
+接続許可または拒否</code></pre>
+      <p>
+        SmartOnやOneGateも認証に関係しますが、NetAttest EPSの主戦場はネットワーク接続認証です。
+        ネットワーク機器から見た認証サーバ、という理解が一番しっくりきます。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ表</h2>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>製品名</th>
+              <th>分類</th>
+              <th>一言説明</th>
+              <th>混同しやすいもの</th>
+              <th>最終理解</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FileZen S</td>
+              <td>ファイル受け渡し</td>
+              <td>分離ネットワーク間で安全にファイルを渡す</td>
+              <td>FTPサーバ、ファイルサーバ</td>
+              <td>承認、ログ、無害化連携を持つ受け渡しゲートウェイ</td>
+            </tr>
+            <tr>
+              <td>Soliton SecureBrowser</td>
+              <td>セキュアブラウザ</td>
+              <td>端末にデータを残しにくくWeb利用する</td>
+              <td>Webアプリ、VDI</td>
+              <td>端末側で使う専用ブラウザ</td>
+            </tr>
+            <tr>
+              <td>Soliton SecureGateway</td>
+              <td>ゲートウェイ</td>
+              <td>SecureBrowserの通信を中継・制御する</td>
+              <td>ルータ、単なるNW機器</td>
+              <td>DMZ等に置くサーバー/アプライアンス</td>
+            </tr>
+            <tr>
+              <td>SmartOn</td>
+              <td>PCログオンMFA</td>
+              <td>Windowsログオン時に本人確認する</td>
+              <td>RADIUSサーバ、NetAttest EPS</td>
+              <td>PCを使い始める入口の認証</td>
+            </tr>
+            <tr>
+              <td>OneGate</td>
+              <td>ID認証基盤</td>
+              <td>クラウド型のCA/MFA/SSO基盤</td>
+              <td>ADそのもの、RADIUSサーバそのもの</td>
+              <td>SaaS/Web/クラウドログインの入口</td>
+            </tr>
+            <tr>
+              <td>NetAttest EPS</td>
+              <td>ネットワーク認証</td>
+              <td>RADIUS/802.1X/証明書認証を担当する</td>
+              <td>SmartOn、OneGate</td>
+              <td>Wi-Fi/VPN/有線LAN接続の認証基盤</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        今回の整理で一番大きかったのは、「認証」という言葉を一つにまとめないことでした。
+        Windowsログオン、SaaSログイン、Wi-Fi/VPN接続認証は、同じ認証でも入口も関係する機器も違います。
+      </p>
+      <p>
+        FileZen Sは分離ネットワーク間のファイル受け渡し、SecureBrowser/SecureGatewayはWebアクセス制御、SmartOnはWindowsログオンMFA、OneGateはクラウド型のCA/MFA/SSO/ID認証基盤、NetAttest EPSはRADIUS/802.1X系のネットワーク認証基盤。
+        こう置き直すと、自治体NW、インターネット分離、認証基盤、RADIUS、MFA、SSO、ファイル受け渡しの文脈がかなり整理しやすくなりました。
+      </p>
+      <p class="article-note">
+        注意: この記事は学習ログとしての整理です。製品仕様、ライセンス、構成可否、対応OS、対応認証方式は更新されるため、実案件では必ず公式資料とベンダー確認を前提にします。
+      </p>
+    </section>
+
+    <section>
+      <h2>参考</h2>
+      <ul>
+        <li><a href="https://www.soliton.co.jp/products/filezens/">FileZen S</a></li>
+        <li><a href="https://www.soliton.co.jp/products/ssbssg/">Soliton SecureBrowser / Soliton SecureGateway</a></li>
+        <li><a href="https://www.soliton.co.jp/products/smarton/">SmartOn</a></li>
+        <li><a href="https://www.soliton.co.jp/products/onegate/specification.html">Soliton OneGate 動作環境</a></li>
+        <li><a href="https://www04.soliton.co.jp/products/netattest_eps/">NetAttest EPS</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

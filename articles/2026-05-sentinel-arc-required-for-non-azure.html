@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure VM以外でMicrosoft Sentinelを使うにはAzure Arcが必須なのか整理した - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure VM以外でMicrosoft Sentinelを使うにはAzure Arcが必須なのか整理した</h1>
+    <p>2026-05-13 / Azure / Microsoft Sentinel / Azure Arc / AMA</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Microsoft SentinelとAzure Arc、Azure Monitor Agent（AMA）の関係を調べている中で、
+        最初は「Azure VM以外のシステムでSentinelを使うには、Azure Arcが必須」と理解していました。
+      </p>
+      <p>
+        ただ、調べていくうちに少し違和感が出てきました。
+        Sentinelはログを分析するためのSIEM/SOARサービスであり、ログを入れる方法はAMAだけではありません。
+        そう考えると、「Azure VM以外なら必ずArcが必要」と言い切るのは少し雑ではないか、という疑問が出てきました。
+      </p>
+      <p>
+        今回はその理解を整理し直したメモです。
+        結論から言うと、ポイントは「どの方式でLog Analytics Workspaceへログを入れるか」です。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に混乱したこと</h2>
+      <p>
+        最初の理解では、Microsoft Sentinel、Log Analytics Workspace、AMA、DCR、Azure Arcを
+        まとめて「Sentinelにログを送るための一式」として見ていました。
+        そのため、Azure外のサーバーを扱うならArcが必須、と単純に覚えそうになっていました。
+      </p>
+      <p>
+        しかし、実際にはそれぞれの役割は分かれています。
+        Sentinelはログの分析・検知・インシデント管理を行う側であり、
+        その前段にあるログ収集の方式によって、Arcが必要かどうかが変わります。
+      </p>
+    </section>
+
+    <section>
+      <h2>各コンポーネントの関係</h2>
+      <p>
+        自分の中では、まず以下のように役割を分けると理解しやすくなりました。
+      </p>
+      <ul>
+        <li>
+          <strong>Microsoft Sentinel：</strong>
+          Log Analytics Workspaceに入ったログを使って、分析、検知、インシデント管理を行うSIEM/SOARサービス。
+        </li>
+        <li>
+          <strong>Log Analytics Workspace：</strong>
+          Sentinelが利用するログの保存先。Sentinelはここに入ったログを検索・分析に使う。
+        </li>
+        <li>
+          <strong>AMA（Azure Monitor Agent）：</strong>
+          Azure Monitor Agentのこと。サーバーのイベントログ、Syslog、パフォーマンス情報などを収集し、
+          Log Analytics WorkspaceやSentinelで使えるように送信するエージェント。
+        </li>
+        <li>
+          <strong>DCR（Data Collection Rule）：</strong>
+          Data Collection Ruleのこと。AMAが何のログを収集するか、どこへ送るかを定義するルール。
+        </li>
+        <li>
+          <strong>Azure Arc：</strong>
+          オンプレミス、VMware、他クラウドなどAzure外のサーバーをAzure上の管理対象リソースとして扱えるようにする仕組み。
+        </li>
+      </ul>
+      <p>
+        つまり、AMA + DCRでサーバーのログを収集する場合、
+        DCRをどのマシンに関連付けるのか、という管理対象が必要になります。
+        Azure VMであれば最初からAzureリソースですが、Azure外のサーバーはそのままではAzure上の管理対象リソースではありません。
+        そこでAzure Arcが関係してきます。
+      </p>
+    </section>
+
+    <section>
+      <h2>Azure VMの場合</h2>
+      <p>
+        Azure VMは、作成された時点でAzure Resource Manager上のリソースです。
+        そのため、Azure VM拡張機能としてAMAを導入でき、DCRもAzure VMに関連付けられます。
+        この場合、Azure Arcは不要です。
+      </p>
+      <pre><code>Azure VM
+  → Azure VM拡張機能としてAMAを導入
+  → DCRを関連付け
+  → Log Analytics Workspace
+  → Microsoft Sentinel
+  → Azure Arcは不要</code></pre>
+      <p>
+        ここでArcを使わない理由は、Azure VMがすでにAzureの管理対象だからです。
+        ArcはAzure外のリソースをAzureに接続するための仕組みなので、
+        すでにAzureリソースであるVMに対して、通常はArcを追加する必要はありません。
+      </p>
+    </section>
+
+    <section>
+      <h2>オンプレ / VMware / 他クラウドのサーバーの場合</h2>
+      <p>
+        一方で、オンプレミス、VMware、AWS、GCPなどにあるサーバーは、
+        そのままではAzure上のVMリソースではありません。
+        そのサーバーをAMA + DCRの対象としてAzure側から管理したい場合は、
+        Azure ArcでAzureに登録し、Azure Arc対応サーバーとしてリソース化する必要があります。
+      </p>
+      <pre><code>オンプレ / VMware / 他クラウドのサーバー
+  → Azure ArcでAzureに登録
+  → Azure Arc対応サーバーとしてAzure上にリソース化
+  → AMAを導入
+  → DCRを関連付け
+  → Log Analytics Workspace
+  → Microsoft Sentinel</code></pre>
+      <p>
+        ここで必要なのは、「Sentinelを使うためのArc」ではなく、
+        「Azure外のサーバーをAzure管理リソースとして扱い、AMA + DCRを適用するためのArc」です。
+        この違いを分けて考えると、だいぶ整理しやすくなりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Arcが不要なログ連携方式もある</h2>
+      <p>
+        重要なのは、Sentinelへのログ連携がすべてAMA + DCRだけではないことです。
+        Sentinelにはさまざまなデータコネクタや取り込み方式があります。
+        そのため、次のようなケースでは、ログ発生元のシステムにAzure Arcを入れる必要がないことがあります。
+      </p>
+      <ul>
+        <li>Azure VMからAMAでログを収集する場合</li>
+        <li>SaaS / Microsoft 365 / Defender系コネクタで連携する場合</li>
+        <li>ネットワーク機器がSyslog / CEFをログフォワーダへ送る構成</li>
+        <li>LogstashやLogs Ingestion APIを使って取り込む構成</li>
+        <li>APIで直接Log Analytics Workspaceに送信する構成</li>
+      </ul>
+      <p>
+        ただし、Syslog / CEFについては少し注意が必要です。
+        ネットワーク機器やセキュリティ機器そのものはArc対応サーバーにするわけではありません。
+        一方で、非AzureのLinuxサーバーをログフォワーダとして用意し、そのフォワーダにAMAを導入する場合は、
+        そのフォワーダ側をAzure Arc対応サーバーとして扱う構成になりやすいです。
+      </p>
+    </section>
+
+    <section>
+      <h2>Arcが必要になりやすいケース</h2>
+      <p>
+        逆に、Azure外のサーバーそのものをAMA + DCRで直接収集対象として扱う場合は、
+        Azure Arcが必要になりやすいと整理しました。
+      </p>
+      <ul>
+        <li>オンプレWindows ServerのイベントログをAMA + DCRで収集する場合</li>
+        <li>VMware上のLinux / Windows ServerをAMA + DCRで収集する場合</li>
+        <li>AWS / GCP上のVMをAzure Monitor Agentで管理する場合</li>
+        <li>非AzureのLinuxサーバーをSyslog / CEFログフォワーダとして使い、そのフォワーダにAMAを導入する場合</li>
+      </ul>
+      <p>
+        この場合、Azure外のサーバーに対してDCRを関連付ける必要があります。
+        その前提として、そのサーバーがAzure上でArc対応サーバーとして見えている必要がある、という理解です。
+      </p>
+    </section>
+
+    <section>
+      <h2>条件分岐で整理する</h2>
+      <p>
+        今回の学びを、実務メモとして使いやすい形にすると次のようになります。
+      </p>
+      <div class="table-scroll">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>ログ連携の考え方</th>
+              <th>Azure Arcの要否</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Azure VMにAMAを入れてDCRで収集する</td>
+              <td>不要</td>
+              <td>Azure VMは最初からAzure管理リソースであり、VM拡張機能としてAMAを導入できるため。</td>
+            </tr>
+            <tr>
+              <td>オンプレ / VMware / 他クラウドのサーバーにAMAを入れてDCRで収集する</td>
+              <td>必要になりやすい</td>
+              <td>Azure外のサーバーをArc対応サーバーとして登録し、DCRの関連付け対象にする必要があるため。</td>
+            </tr>
+            <tr>
+              <td>SaaS / Microsoft 365 / Defender系コネクタを使う</td>
+              <td>不要なことが多い</td>
+              <td>サーバーにAMAを入れる方式ではなく、サービス側のコネクタで連携するため。</td>
+            </tr>
+            <tr>
+              <td>ネットワーク機器がSyslog / CEFをフォワーダへ送る</td>
+              <td>機器自体は不要</td>
+              <td>機器はSyslog / CEFを送るだけ。フォワーダにAMAを入れる場所が非Azureなら、フォワーダ側でArcが関係する。</td>
+            </tr>
+            <tr>
+              <td>Logs Ingestion APIやAPI連携で送信する</td>
+              <td>不要なことが多い</td>
+              <td>Azure管理リソースとしてサーバーにDCRを関連付ける方式ではなく、APIでログを投入するため。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>理解が変わったポイント</h2>
+      <p>
+        最初は「Azure VM以外 = Azure Arc必須」と覚えそうになっていました。
+        しかし、調べ直してみると、正確にはもう少し条件付きでした。
+      </p>
+      <p>
+        正確には、「非AzureサーバーをAMA + DCR方式でSentinelに直接収集対象として扱う場合はAzure Arcが必要」と考える方が近いです。
+        一方で、SaaSコネクタ、Microsoft 365 / Defender系コネクタ、Syslog / CEF転送、Logstash、Logs Ingestion API、
+        直接API送信など、Arcを前提にしないログ連携方式もあります。
+      </p>
+      <p>
+        つまり、Sentinelを使うかどうかではなく、ログ収集の方式を見る必要があります。
+        ここを分けて考えることで、「Arcが必要な構成」と「Arcなしでよい構成」を判断しやすくなりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>参考にした公式情報</h2>
+      <p>
+        今回の整理では、Microsoft Learnの以下の情報を参考にしました。
+      </p>
+      <ul>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/agents/agents-overview">Azure Monitor Agent overview</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/agents/azure-monitor-agent-data-collection">Collect data from virtual machine client with Azure Monitor</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-arc/servers/azure-monitor-agent-deployment">Deployment options for Azure Monitor agent on Azure Arc-enabled servers</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/sentinel/connect-data-sources">Microsoft Sentinel data connectors</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/sentinel/connect-cef-ama">Ingest syslog and CEF messages to Microsoft Sentinel with the Azure Monitor Agent</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Microsoft Sentinel を使うこと自体に Azure Arc が必須なわけではない。
+        Azure Arc が必要になるのは、主に Azure 外のサーバーを Azure の管理対象リソースとして登録し、AMA + DCR によってログ収集する場合である。
+      </p>
+      <p>
+        今回の整理で、自分の中では「Sentinelの話」と「ログ収集方式の話」を分けて考えるのが大事だと分かりました。
+        Sentinelにログを入れる方法は複数あり、その中でAzure外のサーバーをAMA + DCRの管理対象にする場合にAzure Arcが出てくる、
+        という理解で進めるのが実務上も分かりやすそうです。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

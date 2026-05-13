@@ -84,6 +84,43 @@ h2 {
   font-size: 0.85rem;
 }
 
+.article-table-wrapper {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.comparison-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 0.94rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  border: 1px solid #dbe3ef;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.comparison-table th {
+  background: #1f2937;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.comparison-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.article-note {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  padding: 12px 14px;
+}
+
 .site-footer {
   text-align: center;
   padding: 24px;

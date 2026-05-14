@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Start-CodexFromClipboard.ps1 の一行依頼から学んだ Codex 記事化フロー - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Start-CodexFromClipboard.ps1 の一行依頼から学んだ Codex 記事化フロー</h1>
+    <p>2026-05-14 / Codex / GitHub Pages / Automation</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        今回の保存済み依頼に書かれていた本文は、<code>.\scripts\Start-CodexFromClipboard.ps1</code> という一行だけでした。
+        最初に見たときは、これを「実行した結果を記事にする依頼」なのか、「このスクリプトそのものを学習ログとして扱う依頼」なのかが分かりにくい状態でした。
+      </p>
+      <p>
+        そこで、保存済み依頼だけで推測しすぎず、スクリプトの中身を確認し、Codex に記事作成を渡すための入口として何をしているのかを整理しました。
+        この記事では、技術的な結論だけでなく、最初の誤解、途中で出た疑問、最後に理解したことを残します。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初の誤解</h2>
+      <p>
+        一行だけの依頼を見ると、最初は「PowerShell コマンドを実行してほしい」という意味にも見えます。
+        しかし、依頼の前提には「Shin infra Lab の記事を作る」「既存 HTML/CSS 構造に従う」「articles.html にリンクを追加する」というルールがありました。
+        そのため、この一行は実行対象そのものというより、記事化する学習対象として扱うのが自然だと判断しました。
+      </p>
+      <p>
+        もう一つの誤解は、スクリプトが記事本文を自動で完成させる道具だと思い込むことです。
+        実際には、スクリプトはクリップボード上の Codex 依頼を保存し、作業前の安全確認を行い、Codex に依頼を渡すためのランチャーでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>確認したこと</h2>
+      <p>
+        スクリプトを読むと、おおまかな流れは次のようになっていました。
+      </p>
+      <ol>
+        <li>リポジトリ、依頼保存用フォルダ、ログ保存用フォルダの存在を確認する。</li>
+        <li><code>git</code> と <code>codex</code>、必要に応じて <code>code</code> コマンドの有無を確認する。</li>
+        <li>クリップボードから Codex 依頼文を読み取り、空でないことと依頼らしい内容であることを確認する。</li>
+        <li>依頼文を <code>codex-inbox</code> 配下の Markdown ファイルとして保存する。</li>
+        <li>作業前に <code>git status</code> を確認し、未コミット変更があれば停止する。</li>
+        <li><code>main</code> を更新し、日付ベースの作業ブランチを作成または再利用する。</li>
+        <li>記事作成ルールを含めた依頼文を組み立て、<code>codex exec</code> に渡す。</li>
+        <li>作業後に <code>git status</code>、<code>git diff --stat</code>、簡易的な秘密情報チェックを表示する。</li>
+      </ol>
+      <p>
+        ここから分かったのは、このスクリプトの主役は「一回の作業を安全に始めるための段取り」だということです。
+      </p>
+    </section>
+
+    <section>
+      <h2>途中で出た疑問</h2>
+      <p>
+        議論の中で確認したくなった点は、主に次の三つです。
+      </p>
+      <ul>
+        <li>保存済み依頼が一行だけの場合、どこまで本文を補ってよいのか。</li>
+        <li>スクリプトに含まれるローカルパスや実行ログの扱いを、公開記事でどこまで書いてよいのか。</li>
+        <li>自動化スクリプトの結論だけを書くのか、使う前に抱いた誤解や確認手順も残すべきなのか。</li>
+      </ul>
+      <p>
+        今回は、個人情報や環境固有の値は載せず、確認できない会話内容は TODO として残す方針にしました。
+        また、記事の中心は「スクリプトの機能紹介」ではなく、「一行依頼から作業フローを読み解いた学習ログ」としました。
+      </p>
+    </section>
+
+    <section>
+      <h2>最終的な理解</h2>
+      <p>
+        <code>Start-CodexFromClipboard.ps1</code> は、Codex に作業を任せる前の入口を整えるスクリプトです。
+        クリップボードから依頼を受け取り、依頼ファイルとして保存し、作業前のリポジトリ状態を確認し、ブランチを準備してから Codex を起動します。
+      </p>
+      <p>
+        重要なのは、Codex に任せる範囲を広げても、人間が確認できる材料を残している点です。
+        依頼文、ログ、作業前後の git 状態、差分、簡易的な秘密情報チェックが残るため、あとからレビューしやすくなります。
+      </p>
+      <p>
+        TODO: 実際の会話で出た具体的な質問や判断理由が別ログに残っている場合は、人間が確認して追記します。
+      </p>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+      <p>
+        今回の学びは、短い依頼ほど周辺の文脈を丁寧に確認する必要があるということです。
+        コマンド一行だけを見て判断すると、単なる実行依頼として扱ってしまう可能性があります。
+        しかし、保存済み依頼、スクリプトの中身、既存の記事構造を合わせて見ると、記事化すべきテーマは「Codex 作業を安全に始めるための運用」だと分かりました。
+      </p>
+      <ul>
+        <li>短い依頼でも、保存ファイルとして残すと後から確認しやすい。</li>
+        <li>自動化するほど、作業前の <code>git status</code> 確認が重要になる。</li>
+        <li>実行ログと差分確認を残すことで、人間のレビューに戻しやすくなる。</li>
+        <li>不明点を推測で埋めず、TODO として残す方が公開記事として安全。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>変更ファイルとレビュー観点</h2>
+      <p>
+        今回の記事化で変更したファイルは次の通りです。
+      </p>
+      <ul>
+        <li><code>articles/2026-05-start-codex-from-clipboard-command-learning.html</code>: 新規記事を追加。</li>
+        <li><code>articles.html</code>: GitHub / Blog Operation セクションに新規記事へのリンクを追加。</li>
+      </ul>
+      <p>
+        人間がレビューするポイントは、記事の解釈が実際の運用意図と合っているか、TODO とした箇所に追記すべき会話ログがあるか、公開してはいけない情報が含まれていないかです。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        <code>.\scripts\Start-CodexFromClipboard.ps1</code> という一行依頼は、単なるコマンド実行ではなく、Codex 記事作成を始めるための運用フローを示す入口でした。
+        最初は目的を誤解しやすい依頼でしたが、スクリプトを確認することで、依頼保存、作業前確認、ブランチ準備、Codex 実行、差分確認までを一つの流れとして理解できました。
+      </p>
+      <p>
+        自動化の価値は、作業を速くすることだけではありません。
+        あとから人間が確認できる形で依頼と結果を残し、安全に公開判断できる状態を作ることにもあります。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

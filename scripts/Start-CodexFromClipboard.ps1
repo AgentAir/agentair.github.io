@@ -1,9 +1,7 @@
-# C:\Users\shin\Documents\GitHub\agentair.github.io\scripts\Start-CodexFromClipboard.ps1
-
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 # =========================
-# 設定
+# Settings
 # =========================
 $RepoPath = "$env:USERPROFILE\Documents\GitHub\agentair.github.io"
 $InboxDir = Join-Path $RepoPath "codex-inbox"
@@ -18,11 +16,8 @@ $LogFile = Join-Path $LogDir "$Now-codex-run.log"
 $BranchName = "feature/article-$Today"
 
 try {
-    # =========================
-    # フォルダ作成
-    # =========================
     if (!(Test-Path $RepoPath)) {
-        throw "リポジトリが見つかりません: $RepoPath"
+        throw "Repository not found: $RepoPath"
     }
 
     if (!(Test-Path $InboxDir)) {
@@ -35,27 +30,24 @@ try {
 
     Start-Transcript -Path $LogFile -Append | Out-Null
 
-    Write-Host "=== Codex自動記事化スクリプト開始 ==="
+    Write-Host "=== Codex article automation started ==="
     Write-Host "RepoPath: $RepoPath"
     Write-Host "PromptFile: $PromptFile"
     Write-Host "LogFile: $LogFile"
     Write-Host ""
 
-    # =========================
-    # コマンド存在確認
-    # =========================
-    Write-Host "=== コマンド存在確認 ==="
+    Write-Host "=== Checking commands ==="
 
     if (!(Get-Command git -ErrorAction SilentlyContinue)) {
-        throw "git コマンドが見つかりません。"
+        throw "git command was not found."
     }
 
     if (!(Get-Command codex -ErrorAction SilentlyContinue)) {
-        throw "codex コマンドが見つかりません。Codex CLIがインストールされているか確認してください。"
+        throw "codex command was not found. Please check Codex CLI installation."
     }
 
     if (!(Get-Command code -ErrorAction SilentlyContinue)) {
-        Write-Host "警告: code コマンドが見つかりません。最後にVS Codeを開く処理はスキップします。"
+        Write-Host "Warning: code command was not found. VS Code open step will be skipped."
         $CanOpenVSCode = $false
     } else {
         $CanOpenVSCode = $true
@@ -65,53 +57,47 @@ try {
     codex --version
     Write-Host ""
 
-    # =========================
-    # クリップボードからCodex依頼文を取得
-    # =========================
-    Write-Host "=== クリップボード確認 ==="
+    Write-Host "=== Reading clipboard ==="
 
     $prompt = Get-Clipboard -Raw
 
     if ([string]::IsNullOrWhiteSpace($prompt)) {
-        throw "クリップボードが空です。ChatGPTで作成したCodex依頼文をコピーしてから再実行してください。"
+        throw "Clipboard is empty. Copy the Codex request text from ChatGPT and run again."
     }
 
     if ($prompt -notmatch "Codex|Shin infra Lab|記事|依頼|作業ルール") {
-        Write-Host "クリップボードの内容がCodex依頼文ではなさそうです。"
-        Write-Host "先頭200文字:"
+        Write-Host "Clipboard content does not look like a Codex request."
+        Write-Host "First 200 characters:"
         Write-Host $prompt.Substring(0, [Math]::Min(200, $prompt.Length))
-        throw "Codex依頼文チェックに失敗しました。"
+        throw "Codex request validation failed."
     }
 
     Set-Content -Path $PromptFile -Value $prompt -Encoding UTF8
 
-    Write-Host "Codex依頼文を保存しました。"
+    Write-Host "Saved Codex request:"
     Write-Host $PromptFile
     Write-Host ""
 
-    # =========================
-    # Git準備
-    # =========================
     cd $RepoPath
 
-    Write-Host "=== 作業前 git status ==="
+    Write-Host "=== Git status before work ==="
     git status
 
     $gitStatus = git status --porcelain
     if (![string]::IsNullOrWhiteSpace($gitStatus)) {
         Write-Host ""
-        Write-Host "未コミット変更があります。安全のため停止します。"
+        Write-Host "Uncommitted changes were found. Stopping for safety."
         Write-Host $gitStatus
-        throw "未コミット変更があるため停止しました。"
+        throw "Stopped because the working tree is not clean."
     }
 
     Write-Host ""
-    Write-Host "=== mainを最新化 ==="
+    Write-Host "=== Updating main ==="
     git checkout main
     git pull
 
     Write-Host ""
-    Write-Host "=== 作業ブランチ作成 ==="
+    Write-Host "=== Creating work branch ==="
 
     $branchExists = git branch --list $BranchName
     if ($branchExists) {
@@ -120,53 +106,46 @@ try {
         git checkout -b $BranchName
     }
 
-    # =========================
-    # Codexに渡す最終指示
-    # =========================
     $codexInstruction = @"
-以下のCodex依頼文に従って、Shin infra Labの記事を作成してください。
+Please create a Shin infra Lab article based on the following Codex request.
 
-重要ルール:
-- commit はしない
-- push はしない
-- 個人情報、サブスクリプションID、テナントID、IPアドレス、トークン、SAS URL、秘密鍵は記事に含めない
-- 不明点は推測せず TODO として残す
-- 既存のHTML/CSS構成に合わせる
-- articles.html に記事リンクを追加する
-- 技術的な結論だけでなく、理解の変化も記事に含める
-- 最後に変更点と人間が確認すべき点を要約する
+Important rules:
+- Do not commit.
+- Do not push.
+- Do not include personal information.
+- Do not include subscription IDs, tenant IDs, IP addresses, tokens, SAS URLs, private keys, or secrets.
+- If something is unclear, leave it as TODO instead of guessing.
+- Follow the existing HTML/CSS structure.
+- Add a link to articles.html.
+- Include not only the technical conclusion, but also the learning process.
+- Include initial misunderstanding, questions during the discussion, and final understanding.
+- At the end, summarize changed files and points the human should review.
 
-保存済み依頼文:
+Saved request file:
 $PromptFile
 
---- Codex依頼文ここから ---
+--- Codex request begins ---
 
 $prompt
 
---- Codex依頼文ここまで ---
+--- Codex request ends ---
 "@
 
-    # =========================
-    # Codex実行
-    # =========================
     Write-Host ""
-    Write-Host "=== Codex実行開始 ==="
+    Write-Host "=== Running Codex ==="
 
     codex exec --sandbox workspace-write $codexInstruction
 
     Write-Host ""
-    Write-Host "=== Codex実行完了 ==="
+    Write-Host "=== Codex finished ==="
 
-    # =========================
-    # 結果確認
-    # =========================
     Write-Host ""
-    Write-Host "=== 変更状況 ==="
+    Write-Host "=== Git changes ==="
     git status
     git diff --stat
 
     Write-Host ""
-    Write-Host "=== 秘密情報っぽい文字列チェック ==="
+    Write-Host "=== Simple secret-like string check ==="
 
     $secretResult = Select-String -Path .\articles\*.html, .\*.html, .\assets\js\*.js -Pattern `
     "subscription|tenant|client_secret|password|passwd|token|apikey|api_key|secret|Bearer|sas|sig=|SharedAccessSignature|BEGIN PRIVATE KEY|BEGIN RSA PRIVATE KEY|tenantId|subscriptionId" `
@@ -176,16 +155,16 @@ $prompt
     if ($secretResult) {
         $secretResult
     } else {
-        Write-Host "簡易チェックでは該当なし"
+        Write-Host "No matches found by simple check."
     }
 
     Write-Host ""
-    Write-Host "=== 次に人間がやること ==="
-    Write-Host "1. git diff を確認"
-    Write-Host "2. 秘密情報がないか確認"
-    Write-Host "3. 問題なければ git add / commit / push"
+    Write-Host "=== Next manual steps ==="
+    Write-Host "1. Run: git diff"
+    Write-Host "2. Check article accuracy and secrets."
+    Write-Host "3. If OK, run git add / commit / push."
     Write-Host ""
-    Write-Host "保存したCodex依頼文:"
+    Write-Host "Saved Codex request:"
     Write-Host $PromptFile
 
     if ($CanOpenVSCode) {
@@ -194,10 +173,10 @@ $prompt
 }
 catch {
     Write-Host ""
-    Write-Host "=== エラーで停止しました ===" -ForegroundColor Red
+    Write-Host "=== Stopped with error ===" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
-    Write-Host "ログファイル:"
+    Write-Host "Log file:"
     Write-Host $LogFile
 }
 finally {
@@ -207,6 +186,6 @@ finally {
     }
 
     Write-Host ""
-    Write-Host "Enterキーを押すまで閉じません。"
+    Write-Host "Press Enter to close."
     Read-Host
 }

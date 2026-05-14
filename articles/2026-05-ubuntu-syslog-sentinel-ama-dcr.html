@@ -1,115 +1,246 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Ubuntu の Syslog を Azure Arc / AMA / DCR 経由で Microsoft Sentinel に収集する手順</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ubuntu の Syslog を Azure Arc / AMA / DCR 経由で Microsoft Sentinel に収集する手順 - Shin Infra Lab</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-  <header>
+  <header class="site-header">
     <h1>Ubuntu の Syslog を Azure Arc / AMA / DCR 経由で Microsoft Sentinel に収集する手順</h1>
-    <p>Azure Arc に接続しただけでは Syslog は収集されない。AMA と DCR の関連付けまで含めて確認した学習メモです。</p>
+    <p>2026-05-14 / Azure / Microsoft Sentinel / Azure Arc / AMA / DCR</p>
   </header>
 
-  <main>
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
     <section>
-      <h2>最初の理解</h2>
+      <h2>はじめに</h2>
       <p>
-        最初は、Ubuntu が Azure Arc に接続されていれば、そのまま Microsoft Sentinel にログが送られると思っていました。
+        今回は、Ubuntu の Syslog を Microsoft Sentinel に収集できるようにした検証を整理します。
+        最初は、Ubuntu が Azure Arc に接続されていれば、そのまま Sentinel にログが送られると思っていました。
         しかし実際には、Azure Arc に接続しただけでは不十分でした。
       </p>
       <p>
-        Azure Arc は、オンプレミスや他クラウド、通常の Ubuntu などを Azure 上の管理対象リソースとして扱うための仕組みです。
-        ただし、ログを実際に収集して Log Analytics Workspace に送るには、Azure Monitor Agent（AMA）と Data Collection Rule（DCR）の設定が必要です。
+        Sentinel に Ubuntu の Syslog を入れるには、Arc、AMA、DCR、Log Analytics Workspace の役割を分けて見る必要があります。
+        今回の記事では、単なる手順だけではなく、どこで勘違いし、何を確認して理解が変わったのかを残します。
       </p>
     </section>
 
     <section>
-      <h2>実際に必要だったもの</h2>
+      <h2>最初の理解</h2>
+      <p>
+        最初の理解は、かなり単純でした。
+        Ubuntu を Azure Arc に接続すれば、Azure 側から管理できるようになり、そのまま Microsoft Sentinel にログも送られるだろうと考えていました。
+      </p>
+      <p>
+        しかし、実際に確認していくと、Arc 接続はあくまで「Azure から対象サーバーを管理対象として見えるようにする」ための入口でした。
+        Syslog を収集して Log Analytics Workspace に送るには、次の条件がそろっている必要があります。
+      </p>
       <ul>
         <li>Azure Arc 対応サーバーとして Azure に登録されていること</li>
         <li>Azure Monitor Agent / AMA が導入されていること</li>
-        <li>Data Collection Rule / DCR が作成されていること</li>
-        <li>DCR が対象の Ubuntu / Arc 対応サーバーに関連付けられていること</li>
-        <li>DCR で Syslog の Facility / Severity を収集対象にしていること</li>
-        <li>DCR の送信先が Sentinel で使っている Log Analytics Workspace になっていること</li>
+        <li>Data Collection Rule / DCR が対象の Ubuntu Arc マシンに関連付いていること</li>
+        <li>DCR の Collect 設定で Syslog の Facility / Severity が設定されていること</li>
       </ul>
     </section>
 
     <section>
-      <h2>DCR 関連付けの確認</h2>
+      <h2>今回の構成</h2>
       <p>
-        Ubuntu 側では、AMA の設定配布状況を以下のディレクトリで確認しました。
+        今回は、Ubuntu 上で発生させた Syslog を rsyslog 経由で Azure Monitor Agent に渡し、DCR の設定に従って Log Analytics Workspace へ送信しました。
+        Microsoft Sentinel はその Workspace 上のログを使うため、最終的には Sentinel の画面から <code>Syslog</code> テーブルを確認します。
       </p>
-      <pre><code>sudo ls -l /etc/opt/microsoft/azuremonitoragent/config-cache/configchunks/</code></pre>
+      <pre><code>Ubuntu
+  ↓ Syslog / logger
+rsyslog
+  ↓
+Azure Monitor Agent / AMA
+  ↓ DCR
+Log Analytics Workspace
+  ↓
+Microsoft Sentinel
+  ↓
+Syslog テーブルで確認</code></pre>
       <p>
-        最初は configchunks に設定が配布されていませんでした。
-        その後、DCR 作成時に Azure Arc 対応サーバーを選択し、対象 Ubuntu に関連付けたところ、
-        configchunks 配下にファイルが増えました。
-      </p>
-      <p>
-        このことから、DCR が対象 Ubuntu に関連付けられると、AMA 側に収集設定が配布されることが確認できました。
+        ここで大事なのは、Sentinel が直接 Ubuntu へ取りに行くわけではないという点です。
+        Ubuntu 側で AMA が動き、DCR によって「どのログを集めるか」が配布され、その結果が Log Analytics Workspace に入ります。
       </p>
     </section>
 
     <section>
-      <h2>Heartbeat の確認</h2>
+      <h2>役割の整理</h2>
       <p>
-        以下の KQL では、Windows と Ubuntu の両方が見えていました。
+        初心者のうちは、Arc、AMA、DCR、Sentinel がまとめて「ログ連携の仕組み」に見えます。
+        しかし、詰まったときに切り分けるには、役割を分けて考える必要があります。
+      </p>
+      <ul>
+        <li><strong>Azure Arc</strong>: Ubuntu を Azure 上の管理対象リソースとして登録する仕組み。</li>
+        <li><strong>Azure Monitor Agent / AMA</strong>: Ubuntu 上で動作し、ログを収集して Azure Monitor / Log Analytics Workspace に送るエージェント。</li>
+        <li><strong>Data Collection Rule / DCR</strong>: AMA が何を収集し、どこへ送るかを定義するルール。</li>
+        <li><strong>Log Analytics Workspace</strong>: Sentinel が参照するログの保存先。</li>
+        <li><strong>Microsoft Sentinel</strong>: Workspace に入ったログを使って検索、分析、検知、調査を行う SIEM/SOAR サービス。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>実施した内容</h2>
+      <p>
+        今回は、次の順番で確認しました。
+        ポイントは、Arc 接続、AMA の疎通、DCR の配布、Syslog の到達を別々に確認したことです。
+      </p>
+      <ol>
+        <li>Ubuntu が Azure Arc に接続されていることを確認する。</li>
+        <li>Sentinel の Data connectors から <strong>Syslog via AMA</strong> を選択する。</li>
+        <li>DCR を作成する。</li>
+        <li>DCR の Resources で Ubuntu の Azure Arc 対応サーバーを選択する。</li>
+        <li>Ubuntu 側で <code>configchunks</code> に DCR 設定が配布されたことを確認する。</li>
+        <li><code>Heartbeat</code> テーブルで AMA の接続を確認する。</li>
+        <li><code>logger</code> コマンドで Syslog テストログを生成する。</li>
+        <li><code>Syslog</code> テーブルで <code>sentinel-test</code> が見えることを確認する。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>確認コマンド</h2>
+      <p>
+        Ubuntu 側では、まず Arc と AMA の状態を確認しました。
+      </p>
+      <pre><code>sudo azcmagent show
+
+systemctl status azuremonitoragent --no-pager</code></pre>
+      <p>
+        次に、AMA に DCR の設定が配布されているかを確認しました。
+        <code>configchunks</code> は、Azure 側で関連付けた DCR の設定が AMA 側に届いているかを見るために確認します。
+        ここに何も増えない場合、AMA は動いていても「何を収集するか」の設定が届いていない可能性があります。
+      </p>
+      <pre><code>sudo ls -l /etc/opt/microsoft/azuremonitoragent/config-cache/configchunks/
+
+sudo grep -R -i "syslog" /etc/opt/microsoft/azuremonitoragent/config-cache/configchunks/</code></pre>
+      <p>
+        Syslog 側では、AMA 関連の rsyslog 設定が入っているかも確認しました。
+      </p>
+      <pre><code>sudo ls -l /etc/rsyslog.d/
+
+sudo ls -l /etc/rsyslog.d/*azuremonitoragent*</code></pre>
+      <p>
+        最後に、<code>logger</code> コマンドでテスト用の Syslog を発生させました。
+        Facility と Severity を分けて投げることで、DCR 側の Collect 設定と合っているかを確認しやすくしています。
+      </p>
+      <pre><code>logger -p authpriv.err "sentinel-test ubuntu authpriv err $(hostname) $(date -Is)"
+logger -p daemon.warning "sentinel-test ubuntu daemon warning $(hostname) $(date -Is)"
+logger -p user.info "sentinel-test ubuntu user info $(hostname) $(date -Is)"</code></pre>
+    </section>
+
+    <section>
+      <h2>KQL で確認する</h2>
+      <p>
+        まずは <code>Heartbeat</code> テーブルで、AMA が Log Analytics Workspace に接続できていることを確認しました。
+        初回確認では範囲を狭くしすぎると見落とすことがあるため、<code>ago(24h)</code> のように広めに見ました。
       </p>
       <pre><code>Heartbeat
-| where TimeGenerated &gt; ago(1h)
+| where TimeGenerated &gt; ago(24h)
 | where Category == "Azure Monitor Agent"
+| project TimeGenerated, Computer, OSType, Category
 | order by TimeGenerated desc</code></pre>
       <p>
-        これは、AMA 自体が動作して Log Analytics Workspace に接続できていることの確認になります。
-        ただし、Heartbeat が見えていることは「AMA が接続できている」ことの確認であり、
-        「Syslog が収集できている」ことの確認ではありません。
-      </p>
-    </section>
-
-    <section>
-      <h2>Syslog の確認</h2>
-      <p>
-        Syslog の収集確認には、以下の KQL を使用しました。
+        次に、<code>logger</code> で生成した <code>sentinel-test</code> が <code>Syslog</code> テーブルに入っているかを確認しました。
       </p>
       <pre><code>Syslog
-| where TimeGenerated &gt; ago(1h)
+| where TimeGenerated &gt; ago(24h)
 | where SyslogMessage contains "sentinel-test"
 | project TimeGenerated, Computer, HostName, Facility, SeverityLevel, ProcessName, SyslogMessage
 | order by TimeGenerated desc</code></pre>
       <p>
-        最初は sentinel-test が見えませんでした。
-        しかし、時間を置いてから再度確認すると、Syslog テーブルに sentinel-test が表示されました。
+        収集されている Facility と Severity の内訳を見るには、次のように集計しました。
+      </p>
+      <pre><code>Syslog
+| where TimeGenerated &gt; ago(24h)
+| summarize count() by Computer, HostName, Facility, SeverityLevel
+| order by count_ desc</code></pre>
+    </section>
+
+    <section>
+      <h2>途中で詰まったところ</h2>
+      <p>
+        今回いちばん詰まったのは、最初に次のコマンドを実行しても、DCR 設定ファイルが配布されていなかったことです。
+      </p>
+      <pre><code>sudo ls -l /etc/opt/microsoft/azuremonitoragent/config-cache/configchunks/</code></pre>
+      <p>
+        この時点では、Ubuntu は Arc に接続されており、AMA も動いているように見えていました。
+        そのため、最初は「なぜ Syslog が来ないのか」が分かりにくい状態でした。
       </p>
       <p>
-        そのため、DCR 関連付け後すぐに見えない場合でも、少し時間を置いてから再確認する必要があります。
+        原因は、DCR の Resources に Ubuntu の Azure Arc 対応サーバーを正しく選択していなかったことでした。
+        DCR を作成していても、対象の Arc マシンに関連付いていなければ、その Ubuntu には収集設定が配布されません。
+      </p>
+      <p>
+        その後、DCR の Resources で Azure Arc の Ubuntu マシンを選択したところ、<code>configchunks</code> 配下にファイルが増えました。
+        これにより、DCR が Ubuntu に配布されたことが確認できました。
+        ここで初めて「AMA は動いている」と「DCR が対象に配布されている」は別の確認だと理解できました。
       </p>
     </section>
 
     <section>
-      <h2>最終的な理解</h2>
+      <h2>Heartbeat は見えるのに Syslog が見えない理由</h2>
+      <p>
+        <code>Heartbeat</code> が見える場合、AMA 自体は動作しており、Log Analytics Workspace へ接続できている可能性が高いです。
+        しかし、それだけでは Syslog 収集が成功しているとは言えません。
+      </p>
+      <p>
+        Syslog が見えない場合は、少なくとも次の観点を分けて確認する必要があります。
+      </p>
       <ul>
-        <li>Azure Arc は、Ubuntu を Azure 上の管理対象リソースとして扱うための仕組み</li>
-        <li>AMA は、実際にログを収集して Azure Monitor / Log Analytics に送るエージェント</li>
-        <li>DCR は、どのログを、どの条件で、どの Log Analytics Workspace に送るかを決めるルール</li>
-        <li>Microsoft Sentinel は、Log Analytics Workspace に入ったログを使って分析・検知・調査を行うサービス</li>
+        <li>DCR が対象の Ubuntu Arc マシンに関連付いているか。</li>
+        <li><code>configchunks</code> に DCR の設定が配布されているか。</li>
+        <li>DCR の Collect 設定で、投げた Facility / Severity が収集対象になっているか。</li>
+        <li>rsyslog 側に AMA 関連の設定が入っているか。</li>
+        <li>Syslog の反映に数分かかっているだけではないか。</li>
       </ul>
       <p>
-        今回の一番大きな学びは、Arc に接続しただけでは Syslog は収集されないという点です。
-        Heartbeat が見えていても、それだけでは Syslog 収集成功とは言えません。
-        最終的には Syslog テーブルで実際のログを確認する必要があります。
+        今回は、DCR の Resources 関連付けが抜けていたため、Heartbeat は見えるが Syslog が見えない状態になっていました。
       </p>
+    </section>
+
+    <section>
+      <h2>最終的に理解したこと</h2>
+      <p>
+        今回の検証で、最終的には次の理解に落ち着きました。
+      </p>
+      <ul>
+        <li>Heartbeat が見える場合、AMA 自体は動作している。</li>
+        <li><code>configchunks</code> にファイルがある場合、DCR は Ubuntu に配布されている。</li>
+        <li><code>Syslog</code> テーブルに <code>sentinel-test</code> が出れば、Ubuntu の Syslog 収集は成功。</li>
+        <li>Syslog はすぐ表示されない場合があるため、数分待つ必要がある。</li>
+        <li>初回確認では <code>ago(1h)</code> より <code>ago(24h)</code> のように広めに見る方がよい。</li>
+        <li>Azure Arc 接続だけでは Sentinel にログは送られず、AMA と DCR の関連付けが重要。</li>
+      </ul>
     </section>
 
     <section>
       <h2>まとめ</h2>
       <p>
-        Ubuntu から Microsoft Sentinel に Syslog を収集するには、Azure Arc、AMA、DCR、Log Analytics Workspace の関係を理解する必要があります。
-        Arc は管理対象として登録するための入口であり、AMA がログを送り、DCR が収集ルールを定義し、Sentinel が Log Analytics Workspace 上のログを分析します。
+        Ubuntu の Syslog を Microsoft Sentinel に収集するには、Azure Arc に接続するだけでは足りません。
+        Arc は Ubuntu を Azure 側の管理対象として見えるようにする入口であり、実際にログを送るのは AMA、何を収集するかを決めるのは DCR です。
+      </p>
+      <p>
+        今回の詰まりポイントは、DCR の Resources に Ubuntu の Azure Arc 対応サーバーを正しく選択していなかったことでした。
+        <code>configchunks</code> を見ることで、DCR が Ubuntu に配布されたかを確認でき、<code>Heartbeat</code> と <code>Syslog</code> を分けて見ることで、AMA の接続確認と Syslog 収集確認を切り分けられました。
+      </p>
+      <p>
+        最終確認は、<code>logger</code> で発生させた <code>sentinel-test</code> が <code>Syslog</code> テーブルに表示されることです。
+        ここまで確認できれば、Ubuntu の Syslog を Azure Arc / AMA / DCR 経由で Microsoft Sentinel に収集できたと言えます。
       </p>
     </section>
   </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
 </body>
 </html>

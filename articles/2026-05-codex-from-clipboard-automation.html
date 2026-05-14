@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex依頼をクリップボードから保存して記事作成につなげる流れ - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Codex依頼をクリップボードから保存して記事作成につなげる流れ</h1>
+    <p>2026-05-14 / Codex / GitHub Pages / Blog Operation</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        今回のCodex依頼は、ブログ記事の本文を直接渡すものではなく、ローカルのPowerShellスクリプトを実行するだけの短い内容でした。
+        最初は「この2行だけで何の記事にすればよいのか」と迷いましたが、実際にはCodexへの記事作成依頼をクリップボードから保存し、作業ブランチ上でCodexを起動するための入口でした。
+      </p>
+      <p>
+        この記事では、<code>Start-CodexFromClipboard.ps1</code> が担っている役割と、そこから分かった半自動の記事作成フローを整理します。
+        具体的な個人情報、ID、IPアドレス、トークン、SAS URL、秘密鍵などは記載しません。
+      </p>
+    </section>
+
+    <section>
+      <h2>背景 / 目的</h2>
+      <p>
+        手書きHTMLのGitHub Pagesブログでは、新しい記事を追加するときに、記事HTMLの作成、<code>articles.html</code> へのリンク追加、差分確認を毎回行います。
+        その作業自体は単純ですが、依頼文の保存、ログ取得、作業前の安全確認まで含めると、手順が増えて抜け漏れが起きやすくなります。
+      </p>
+      <p>
+        そこで、ChatGPT側で作ったCodex依頼文をクリップボードにコピーし、PowerShellスクリプトで保存してからCodexを実行する形にしました。
+        目的は、記事作成を完全自動化することではなく、作業開始前の確認と依頼文の保管を標準化することです。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初の誤解</h2>
+      <p>
+        最初に見えた依頼は、次の2行だけでした。
+      </p>
+      <pre><code>cd "$env:USERPROFILE\Documents\GitHub\agentair.github.io"
+
+.\scripts\Start-CodexFromClipboard.ps1</code></pre>
+      <p>
+        この時点では、単にCodexを起動するだけのメモなのか、記事化するべき運用手順なのかが分かりませんでした。
+        しかし、保存された依頼ファイルとスクリプトを確認すると、これは「クリップボードにあるCodex依頼を保存し、安全確認をしてからCodexに渡す」ための運用でした。
+      </p>
+      <p>
+        つまり、主役は2行のコマンドそのものではなく、その裏側にある記事作成ワークフローでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>確認したこと</h2>
+      <p>
+        スクリプトの中身を読むと、次のような流れになっていました。
+      </p>
+      <ol>
+        <li>リポジトリ、依頼保存用フォルダ、ログ保存用フォルダの存在を確認する</li>
+        <li><code>git</code>、<code>codex</code>、必要に応じて <code>code</code> コマンドの有無を確認する</li>
+        <li>クリップボードからCodex依頼文を読み取り、空欄や明らかに無関係な内容でないか確認する</li>
+        <li>依頼文を <code>codex-inbox</code> 配下へUTF-8で保存する</li>
+        <li><code>git status</code> で作業ツリーが汚れていないか確認する</li>
+        <li><code>main</code> を更新し、日付ベースの作業ブランチを作る</li>
+        <li>記事作成ルールを含めた依頼文を組み立て、<code>codex exec</code> に渡す</li>
+        <li>作業後に <code>git status</code>、<code>git diff --stat</code>、簡易的な秘密情報チェックを実行する</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>議論中に出た問い</h2>
+      <p>
+        今回の依頼から読み取れた問いは、技術的には次の3つでした。
+      </p>
+      <ul>
+        <li>Codexに渡した依頼文を、あとから追跡できる形で残せるか</li>
+        <li>作業前に、別の未コミット変更が混ざっていないことを確認できるか</li>
+        <li>Codexの出力をそのまま公開せず、人間がレビューする前提にできるか</li>
+      </ul>
+      <p>
+        TODO: 実際の会話で出た細かい質問や判断理由は、保存された依頼ファイルだけでは確認できません。
+        必要であれば、人間側で当時の会話ログを見直して追記します。
+      </p>
+    </section>
+
+    <section>
+      <h2>最終的な理解</h2>
+      <p>
+        このスクリプトの結論は、Codexを「いきなり編集する道具」として使うのではなく、依頼文の保存、作業前チェック、ブランチ作成、実行後の確認まで含めた記事作成フローに組み込むことです。
+      </p>
+      <p>
+        特に重要なのは、スクリプトが作業ツリーの未コミット変更を検知したら止まる点です。
+        これにより、Codexが加えた変更と、もともと存在していた変更が混ざりにくくなります。
+      </p>
+      <p>
+        また、実行後に簡易的な秘密情報チェックを行うことで、公開ブログに載せてはいけない文字列が混ざっていないかを確認する入口にもなります。
+        ただし、これはあくまで簡易チェックなので、最終的な公開判断は人間が行う必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>学んだこと</h2>
+      <p>
+        今回の学びは、半自動化では「実行を速くすること」よりも「毎回同じ安全確認を通すこと」が重要だという点です。
+        Codexに記事作成を任せる場合でも、依頼文、ログ、差分、レビュー観点が残っていれば、あとから作業内容を追いやすくなります。
+      </p>
+      <ul>
+        <li>クリップボード経由でも、依頼文をファイルとして残せば再確認しやすい</li>
+        <li>作業前の <code>git status</code> は、半自動化するほど重要になる</li>
+        <li>秘密情報チェックは便利だが、公開前の人間レビューの代わりにはならない</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>変更ファイルとレビュー観点</h2>
+      <p>
+        今回の記事化で変更したファイルは次の通りです。
+      </p>
+      <ul>
+        <li><code>articles/2026-05-codex-from-clipboard-automation.html</code>: 新規記事を追加</li>
+        <li><code>articles.html</code>: GitHub / Blog Operation セクションへ記事リンクを追加</li>
+      </ul>
+      <p>
+        人間がレビューするポイントは、記事本文が実際の運用意図と合っているか、TODOとして残した会話経緯を追記すべきか、公開してはいけない情報が含まれていないかです。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        <code>Start-CodexFromClipboard.ps1</code> は、Codex依頼をクリップボードから読み取り、保存し、作業前後の確認を通して記事作成につなげるための入口です。
+        最初は単なる起動コマンドに見えましたが、実際には安全に半自動化するための運用手順でした。
+      </p>
+      <p>
+        今後は、依頼文の保存、作業ツリー確認、差分確認、秘密情報チェック、人間レビューを1つの流れとして扱うことで、GitHub Pagesブログの記事追加を安定して続けやすくなります。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure リソースは全部サブスクリプション移動できるわけではない：移動できるもの・作り直すものの整理 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Azure リソースは全部サブスクリプション移動できるわけではない：移動できるもの・作り直すものの整理</h1>
+    <p>2026-05-18 / Azure / Resource Manager / Subscription / Migration</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Azure で検証環境や本番環境を整理していると、
+        「このリソースグループを別サブスクリプションへ移動したい」
+        「検証用サブスクリプションから本番用サブスクリプションへ移したい」
+        という場面があります。
+      </p>
+      <p>
+        最初は、Azure Portal 上でリソースを選択して「移動」できるのであれば、
+        多くのリソースはそのまま別サブスクリプションへ移せるのではないかと思っていました。
+        しかし調べてみると、リソース種別ごとに移動可否が細かく分かれており、
+        単純な一括移動では済まないことが分かりました。
+      </p>
+      <p>
+        たとえば、VM は移動候補になりますが、DCR や Sentinel の設定は移動ではなく再作成前提で考える必要があります。
+        VNet は移動できますが、Peering や Private Endpoint が絡むと事前確認が必要です。
+        この記事では、Azure リソース移動の基本前提、移動できる代表例、移動できない代表例、実務上の考え方を整理します。
+      </p>
+    </section>
+
+    <section>
+      <h2>この記事で整理する「移動」の意味</h2>
+      <p>
+        ここで扱うのは、「サブスクリプションそのものを別のサブスクリプションへ移す」という話ではありません。
+        Azure リソースを、別リソースグループまたは別サブスクリプションへ移動する話です。
+      </p>
+      <p>
+        Azure Portal のリソースグループ画面などから実行できる「移動」は便利ですが、
+        すべてのリソースに対して同じように使えるわけではありません。
+        特に、監視、セキュリティ、ネットワーク境界に近いリソースは、
+        「移動」よりも「移動先で作り直す」「関連付けを再設定する」と考えたほうが安全なことが多いです。
+      </p>
+    </section>
+
+    <section>
+      <h2>Azure リソース移動の基本前提</h2>
+      <p>
+        まず、リソース種別ごとの可否を見る前に、Azure リソース移動の前提を押さえておきます。
+      </p>
+      <ul>
+        <li>移動元・移動先サブスクリプションは、同じ Microsoft Entra テナント内である必要がある。</li>
+        <li>リソース移動はリージョン移動ではない。移動しても物理的なリージョンは変わらない。</li>
+        <li>移動するとリソース ID が変わる。スクリプト、ダッシュボード、監視設定、外部管理台帳でリソース ID を参照している場合は更新が必要。</li>
+        <li>移動中は移動元・移動先リソースグループにロックがかかる。移動中の作成、削除、更新はできない。</li>
+        <li>VM のように依存関係があるリソースは、VM / NIC / Disk / Public IP / VNet / NSG などをまとめて確認する必要がある。</li>
+        <li>子リソースは単独で移動できないことがある。親リソースと一緒に動くのか、親が移動不可なのかを確認する。</li>
+      </ul>
+      <p class="article-note">
+        実務では、Azure Portal の移動前検証だけに頼らず、対象リソースの種類、依存関係、公式ドキュメントの移動可否を先に確認しておくのが安全です。
+      </p>
+    </section>
+
+    <section>
+      <h2>移動できる代表例</h2>
+      <p>
+        まずは、移動候補として考えやすい代表例です。
+        ただし「可」と書いていても、依存リソースや構成によって追加作業が必要になることがあります。
+      </p>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>種別</th>
+              <th>移動可否</th>
+              <th>注意点</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Virtual Machine</td>
+              <td>可</td>
+              <td>NIC、Disk、VNet、Public IP、NSG、Backup 構成など依存リソースも確認する。</td>
+            </tr>
+            <tr>
+              <td>Managed Disk</td>
+              <td>可</td>
+              <td>Disk Access / Disk Encryption Set は不可。暗号化構成に注意する。</td>
+            </tr>
+            <tr>
+              <td>Snapshot</td>
+              <td>条件付き可</td>
+              <td>Full snapshot は移動候補。Incremental snapshot は制限がある。</td>
+            </tr>
+            <tr>
+              <td>NIC</td>
+              <td>可</td>
+              <td>VM とセットで確認する。関連する NSG や Public IP も見る。</td>
+            </tr>
+            <tr>
+              <td>VNet</td>
+              <td>可</td>
+              <td>Peering がある場合は事前に解除し、移動後に再設定する。</td>
+            </tr>
+            <tr>
+              <td>NSG</td>
+              <td>可</td>
+              <td>比較的移動しやすいが、サブネットや NIC への関連付けを確認する。</td>
+            </tr>
+            <tr>
+              <td>Route Table</td>
+              <td>可</td>
+              <td>関連サブネットとの依存関係を確認する。</td>
+            </tr>
+            <tr>
+              <td>Storage Account</td>
+              <td>可</td>
+              <td>リージョン移動ではない点に注意する。Private Endpoint や診断設定がある場合は別途確認する。</td>
+            </tr>
+            <tr>
+              <td>Key Vault</td>
+              <td>可</td>
+              <td>Disk Encryption 用途やアクセスポリシー、RBAC、Private Endpoint 連携に注意する。</td>
+            </tr>
+            <tr>
+              <td>Log Analytics Workspace</td>
+              <td>可</td>
+              <td>Automation Account 連携、Sentinel、有効化済みソリューション、診断設定の再確認が必要。</td>
+            </tr>
+            <tr>
+              <td>Recovery Services Vault</td>
+              <td>条件付き可</td>
+              <td>Backup / ASR / CMK 構成に注意。保護状態によって事前作業が必要になる。</td>
+            </tr>
+            <tr>
+              <td>Azure Arc machine</td>
+              <td>可</td>
+              <td>Microsoft.HybridCompute/machines は移動候補。拡張機能や DCR 関連付けは別途確認する。</td>
+            </tr>
+            <tr>
+              <td>App Service / Function App</td>
+              <td>条件付き可</td>
+              <td>Private Endpoint、VNet 統合、App Service Plan、証明書などの依存関係に注意する。</td>
+            </tr>
+            <tr>
+              <td>Azure SQL Server / Database</td>
+              <td>可</td>
+              <td>Server と Database の配置関係、Private Endpoint、診断設定、ファイアウォール設定を確認する。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>移動できない／作り直し前提に近い代表例</h2>
+      <p>
+        次は、移動ではなく再作成・再設定を前提にしたほうがよい代表例です。
+        監視ルール、関連付け、セキュリティ境界、ネットワーク境界に近いものが多い印象です。
+      </p>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>種別</th>
+              <th>移動可否</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Managed Identity</td><td>不可</td></tr>
+            <tr><td>Data Collection Rule / DCR</td><td>不可</td></tr>
+            <tr><td>Diagnostic Settings</td><td>不可</td></tr>
+            <tr><td>Metric Alert</td><td>不可</td></tr>
+            <tr><td>Activity Log Alert</td><td>不可</td></tr>
+            <tr><td>Microsoft Sentinel の Analytics Rule / Data Connector / Incident など</td><td>不可</td></tr>
+            <tr><td>Application Gateway</td><td>不可</td></tr>
+            <tr><td>Azure Firewall</td><td>不可</td></tr>
+            <tr><td>Firewall Policy</td><td>不可</td></tr>
+            <tr><td>NAT Gateway</td><td>不可</td></tr>
+            <tr><td>VPN Gateway / Virtual Network Gateway</td><td>不可</td></tr>
+            <tr><td>ExpressRoute Circuit / Gateway</td><td>不可</td></tr>
+            <tr><td>Standard SKU Load Balancer</td><td>サブスクリプション間移動不可</td></tr>
+            <tr><td>Azure Bastion</td><td>サブスクリプション間移動は不可と考える</td></tr>
+            <tr><td>AKS managed cluster</td><td>不可</td></tr>
+            <tr><td>Azure Container Instance</td><td>不可</td></tr>
+            <tr><td>Databricks Workspace</td><td>不可</td></tr>
+            <tr><td>Disk Access</td><td>不可</td></tr>
+            <tr><td>Disk Encryption Set</td><td>不可</td></tr>
+            <tr><td>Compute Gallery / Shared Image Gallery</td><td>不可</td></tr>
+            <tr><td>SQL IaaS Agent extension resource</td><td>不可</td></tr>
+            <tr><td>App Service Environment</td><td>不可</td></tr>
+            <tr><td>Front Door Classic</td><td>不可</td></tr>
+            <tr><td>Log Analytics Cluster</td><td>不可</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        ここで大事なのは、「移動できない = 使えない」ではなく、
+        「移動先に同じ役割のリソースや設定を作り直す」と考えることです。
+        IaC、エクスポート、手順書、Portal の設定値メモを使って再現できる状態にしておくと、移動作業の見通しがよくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>特に注意するリソース</h2>
+      <h3>VM</h3>
+      <p>
+        VM は移動できますが、VM 単体だけを見て判断すると危険です。
+        実際には NIC、Disk、Public IP、NSG、VNet、Backup 構成などが絡みます。
+      </p>
+      <ul>
+        <li>Marketplace Plan 付き VM</li>
+        <li>Azure Disk Encryption 使用 VM</li>
+        <li>Azure Backup 保護中 VM</li>
+        <li>Availability Set 内 VM</li>
+        <li>Standard SKU Public IP が関連する VM</li>
+      </ul>
+      <p>
+        VM を移動候補にする場合は、Azure Portal の検証だけでなく、
+        対象 VM のネットワーク、ディスク、バックアップ、監視、拡張機能まで一覧化してから判断するのがよいです。
+      </p>
+
+      <h3>Private Endpoint</h3>
+      <p>
+        Private Endpoint はかなり注意が必要です。
+        Private Endpoint 自体が常に安全に移動できるわけではなく、
+        接続先の Private Link resource によって可否が変わります。
+      </p>
+      <p>
+        Microsoft Learn のネットワーク移動制限では、移動をサポートする private-link resource が列挙されています。
+        それ以外の Private Link resource は移動をサポートしないため、
+        実務上は Private Endpoint を「移動」ではなく「移動先で再作成」前提で考えるほうが安全です。
+      </p>
+
+      <h3>Sentinel / Monitor 系</h3>
+      <p>
+        Microsoft Sentinel、DCR、Diagnostic Settings、Alert などは、
+        リソースそのものというより「設定・関連付け・ルール」の要素が強いです。
+        そのため、次のように分けて考えます。
+      </p>
+      <ul>
+        <li>Log Analytics Workspace は移動候補。</li>
+        <li>Sentinel のルールやコネクタは再作成・再設定前提。</li>
+        <li>DCR は再作成前提。</li>
+        <li>Diagnostic Settings は再作成前提。</li>
+        <li>Alert Rule は再作成前提。</li>
+      </ul>
+      <p>
+        Sentinel を使っている環境では、Workspace だけを動かせば終わりではありません。
+        コネクタ、Analytics Rule、Automation Rule、Workbook、Alert、DCR、対象リソース側の診断設定まで含めて棚卸しする必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>自分の検証環境に当てはめた整理</h2>
+      <p>
+        自分の検証環境に当てはめると、移動対象と作り直し対象は次のように分けて考えるのがよさそうです。
+      </p>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>リソース</th>
+              <th>方針</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>VM</td><td>移動候補。ただし NIC / Disk / VNet / NSG とセット確認。</td></tr>
+            <tr><td>VNet / Subnet / NSG</td><td>移動候補。</td></tr>
+            <tr><td>Storage Account</td><td>移動候補。</td></tr>
+            <tr><td>Bastion</td><td>作り直し前提。</td></tr>
+            <tr><td>Private Endpoint</td><td>基本は作り直し前提。</td></tr>
+            <tr><td>Private DNS Zone</td><td>移動可だがリンク再確認。</td></tr>
+            <tr><td>Log Analytics Workspace</td><td>移動候補。</td></tr>
+            <tr><td>Sentinel 設定</td><td>作り直し前提。</td></tr>
+            <tr><td>DCR</td><td>作り直し前提。</td></tr>
+            <tr><td>Azure Arc Machine</td><td>移動候補。</td></tr>
+            <tr><td>AMA 拡張</td><td>親リソース・DCR との依存確認。</td></tr>
+            <tr><td>Defender / Sentinel / Policy 系</td><td>作り直し・再設定前提。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        この整理にしておくと、「全部まとめて移動する」ではなく、
+        「移動する基盤リソース」と「移動先で再作成する運用設定」に分けて作業計画を立てられます。
+      </p>
+    </section>
+
+    <section>
+      <h2>実務上の結論</h2>
+      <p>
+        最終的には、次の3分類で考えるのが分かりやすいです。
+      </p>
+
+      <h3>移動してよいもの</h3>
+      <ul>
+        <li>VM</li>
+        <li>Disk</li>
+        <li>NIC</li>
+        <li>VNet</li>
+        <li>NSG</li>
+        <li>Storage Account</li>
+        <li>Key Vault</li>
+        <li>Log Analytics Workspace</li>
+      </ul>
+      <p>
+        ただし、依存関係は必ず確認します。
+        特に VM、VNet、Workspace は周辺リソースや関連付けが多いため、単体で判断しないほうがよいです。
+      </p>
+
+      <h3>移動しないほうがよいもの</h3>
+      <ul>
+        <li>Private Endpoint</li>
+        <li>Bastion</li>
+        <li>DCR</li>
+        <li>Diagnostic Settings</li>
+        <li>Sentinel 設定</li>
+        <li>Alert</li>
+        <li>Managed Identity</li>
+        <li>Firewall</li>
+        <li>Gateway 系</li>
+      </ul>
+      <p>
+        これらは移動可否が厳しかったり、移動できたとしても関連付けや状態の再確認が重くなりやすかったりします。
+        実務では、作り直しや再設定を前提にしたほうが作業計画を立てやすいです。
+      </p>
+
+      <h3>作り直し前提にするもの</h3>
+      <ul>
+        <li>監視設定</li>
+        <li>セキュリティ設定</li>
+        <li>DCR</li>
+        <li>Sentinel</li>
+        <li>Private Endpoint</li>
+        <li>Bastion</li>
+        <li>Firewall</li>
+        <li>Gateway</li>
+        <li>AKS</li>
+      </ul>
+      <p>
+        監視・セキュリティ・境界系は、移動よりも再構築手順を整えるほうが安全です。
+        IaC で管理していない場合でも、設定値のスクリーンショットやエクスポート、Azure CLI の取得結果を残しておくと復元しやすくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        Azure リソースは、Portal で「移動」メニューが見えるからといって、すべてをそのまま別サブスクリプションへ動かせるわけではありません。
+        VM、Disk、NIC、VNet、NSG、Storage Account、Key Vault、Log Analytics Workspace などは移動候補になりますが、
+        監視設定、DCR、Sentinel 設定、Private Endpoint、Bastion、Firewall、Gateway、AKS などは作り直し・再設定前提で考えたほうが安全です。
+      </p>
+      <p>
+        今回の学びは、「移動できるか」だけでなく、「移動後に同じ状態で運用できるか」まで見る必要があるという点でした。
+        本番環境や長く使う検証環境を整理するときは、移動対象、再作成対象、再設定対象を先に分けてから作業するのがよさそうです。
+      </p>
+      <p class="article-note">
+        Azure の移動サポート状況は更新される可能性があります。最終判断は、必ず最新の Microsoft Learn、Azure Portal の移動前検証、実際の検証結果で確認してください。
+      </p>
+    </section>
+
+    <section>
+      <h2>参考リンク</h2>
+      <ul>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-support-resources">Azure resource types support for move operations</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-resource-group-and-subscription">Move Azure resources to a new resource group or subscription</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/move-limitations/networking-move-limitations">Move Azure Networking resources to new resource group or subscription</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

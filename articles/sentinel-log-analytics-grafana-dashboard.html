@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelのログをAzure Monitor dashboards with Grafanaで可視化してみた - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>SentinelのログをAzure Monitor dashboards with Grafanaで可視化してみた</h1>
+    <p>2026-05-19 / Azure / Sentinel / Grafana / Log Analytics / Monitoring</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        Microsoft Sentinel に取り込んだログは、Sentinel の画面や Log Analytics Workspace から確認できます。
+        今回はそれに加えて、Grafana 形式のダッシュボードでも見やすく表示できるのかを検証しました。
+      </p>
+      <p>
+        ただし今回は、Azure Managed Grafana は作成していません。
+        料金をかけない検証にしたかったため、Azure Portal 内から利用できる
+        <strong>Azure Monitor dashboards with Grafana</strong> を使いました。
+      </p>
+      <p>
+        この記事は、完成手順だけではなく、最初に迷った点や、実際に試して分かったことを整理した検証メモです。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初の理解</h2>
+      <p>
+        最初に整理したのは、Grafana は Sentinel の代替ではない、という点です。
+        Sentinel はログを使って分析、検知、インシデント管理などを行う SIEM/SOAR 側のサービスです。
+        一方で Grafana は、データを見やすく並べるためのダッシュボードとして考えると理解しやすいと感じました。
+      </p>
+      <p>
+        Sentinel に入ったログの実体は、Log Analytics Workspace 上のログです。
+        そのため Grafana は Sentinel に直接つなぐというより、Sentinel が使っている
+        Log Analytics Workspace に対して KQL を実行し、その結果をパネルとして表示するものだと理解しました。
+      </p>
+      <p>
+        つまり今回の位置づけは、「Sentinel でも確認できるデータを、別のダッシュボード画面で見やすく確認する」
+        というものです。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回使った方式</h2>
+      <p>
+        今回は Azure Managed Grafana のリソースは作成せず、Azure Monitor dashboards with Grafana を使いました。
+        Azure Portal 内から Grafana 形式のダッシュボードを作成できる機能で、追加コストを避けたい検証には向いていると感じました。
+      </p>
+      <p>
+        ただし、Grafana 側を無料で使えたとしても、Log Analytics Workspace や Sentinel 側のログ取り込み費用は別問題です。
+        特に Syslog や SecurityEvent などを大量に取り込む場合は、可視化の前にログ取り込み量を意識しておく必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>構成イメージ</h2>
+      <pre><code>Windows / Ubuntu / Azure Arc / AMA
+    ↓
+Log Analytics Workspace
+    ↓
+Microsoft Sentinel
+    ↓
+Azure Monitor dashboards with Grafana
+    ↓
+Grafana形式のダッシュボード表示</code></pre>
+      <p>
+        今回の検証では、Grafana の入口から Sentinel を選ぶというより、
+        Sentinel で使用している Log Analytics Workspace を選び、そこに入っているログを KQL で表示する流れになりました。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に誤解しやすい点</h2>
+      <p>
+        Grafana の画面を開いたとき、最初は Metrics を選ぶ画面に見えました。
+        しかし Sentinel のログを見たい場合は、Metrics ではなく Logs、Azure Monitor Logs、Log Analytics のようなログ参照側を選びます。
+      </p>
+      <p>
+        また、リソースとして仮想マシンを選ぶのではなく、Sentinel で使用している
+        Log Analytics Workspace を選ぶ必要がありました。
+        VM ごとの絞り込みは Grafana のリソース選択で行うのではなく、KQL 側で <code>Computer</code> などを条件にして行うのが自然でした。
+      </p>
+    </section>
+
+    <section>
+      <h2>Heartbeatで接続を確認する</h2>
+      <p>
+        最初は Heartbeat を使って、Grafana から Log Analytics Workspace を参照できることを確認しました。
+        Heartbeat はエージェントの疎通確認に使いやすく、Windows と Linux の両方が見えるかを確認する入口として扱いやすかったです。
+      </p>
+      <pre><code class="language-kusto">Heartbeat
+| where TimeGenerated > ago(6h)
+| summarize Count=count() by bin(TimeGenerated, 15m), OSType
+| order by TimeGenerated asc</code></pre>
+      <p>
+        この結果、<code>OSType</code> は Linux と Windows の両方で入っていることを確認できました。
+      </p>
+      <p>
+        ただし、最初は Grafana 上で線が 1 本だけに見えました。
+        テーブル表示で確認すると、Linux と Windows がそれぞれ同じ <code>Count</code> で出ていました。
+        つまり異常ではなく、Windows と Linux の Heartbeat 件数が同じだったため、2 本の線が完全に重なって 1 本に見えていただけでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>WindowsとLinuxでパネルを分ける</h2>
+      <p>
+        重なって見える状態を避けるため、Windows と Linux でパネルを分けました。
+        パネル名は文字数制限があったため、短めにしています。
+      </p>
+      <p><strong>Windows パネル名:</strong> health-Win</p>
+      <pre><code class="language-kusto">Heartbeat
+| where TimeGenerated > ago(6h)
+| where OSType == "Windows"
+| summarize Count=count() by bin(TimeGenerated, 15m), Computer
+| order by TimeGenerated asc</code></pre>
+      <p><strong>Linux パネル名:</strong> health-linux</p>
+      <pre><code class="language-kusto">Heartbeat
+| where TimeGenerated > ago(6h)
+| where OSType == "Linux"
+| summarize Count=count() by bin(TimeGenerated, 15m), Computer
+| order by TimeGenerated asc</code></pre>
+      <p>
+        これで Windows と Linux を別々のパネルとして確認できるようになりました。
+        まずログが見えていることを確認し、その後で見た目を整える、という順番が良いと感じました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Grafanaパネル設定の考え方</h2>
+      <p>
+        今回は最初から見た目を詰めすぎず、まず Log Analytics Workspace のログが正しく見えることを優先しました。
+        Heartbeat は Time series で表示し、Unit は none、Decimals は 0、Min は 0 にすると見やすかったです。
+      </p>
+      <p>
+        凡例は ON にして、どの <code>Computer</code> や <code>OSType</code> の線なのかを確認できるようにしました。
+        Auto refresh は短くしすぎず、検証では Off または 15m 程度で十分でした。
+        Heartbeat の件数グラフでは、最初からしきい値を無理に設定しない方が、データの見え方を確認しやすいと感じました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Syslog検証で分かったこと</h2>
+      <p>
+        次に Ubuntu の Syslog も Grafana で表示しようとしました。
+        <code>syslog-sev</code> パネルを作りましたが、線は 1 本だけでした。
+        そこで Ubuntu 側で <code>logger</code> コマンドを使い、テストログを出しました。
+      </p>
+      <pre><code class="language-bash">logger -p user.info "grafana-test-info"
+logger -p user.warning "grafana-test-warning"
+logger -p user.err "grafana-test-error"</code></pre>
+      <p>
+        しかし Grafana 側で次の KQL を実行しても、<code>grafana-test</code> のログは表示されませんでした。
+      </p>
+      <pre><code class="language-kusto">Syslog
+| where TimeGenerated > ago(30m)
+| where SyslogMessage contains "grafana-test"
+| project TimeGenerated, Computer, Facility, SeverityLevel, ProcessName, SyslogMessage
+| order by TimeGenerated desc</code></pre>
+      <p>
+        理由としては、以前 Sentinel を最小構成で作ったため、DCR に Syslog 収集設定が入っていない可能性が高いと判断しました。
+        今回の目的は Grafana から Sentinel / Log Analytics のログを見られることの理解だったため、Syslog 用の DCR 追加は今回は実施しませんでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回の到達点</h2>
+      <ul>
+        <li>Azure Monitor dashboards with Grafana を開けた</li>
+        <li>Sentinel のログを見るには Log Analytics Workspace を選ぶべきだと理解した</li>
+        <li>Heartbeat を Grafana で表示できた</li>
+        <li>Windows / Linux を別パネルで表示できた</li>
+        <li>Syslog は DCR 側の収集設定が必要そうだと分かったため、今回は対象外にした</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>今回の学び</h2>
+      <p>
+        Grafana は Sentinel の代替ではなく、可視化用のダッシュボードとして使うものだと整理できました。
+        Sentinel で使うログは Log Analytics Workspace に保存されており、Grafana ではその Workspace を選んで KQL で表示します。
+      </p>
+      <p>
+        最初の確認には Heartbeat が向いていました。
+        一方で Syslog や SecurityEvent などは、そもそも DCR で収集されていなければ Grafana には表示されません。
+        可視化を考える前に、「Log Analytics にデータが入っているか」を確認することが重要だと分かりました。
+      </p>
+      <p>
+        今回は料金を避けるため Azure Managed Grafana は作らず、Azure Monitor dashboards with Grafana だけで検証しました。
+        小さく試して理解するには、この進め方がちょうど良かったです。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AzureのGrafana選択肢とKQLの基本を整理する - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>AzureのGrafana選択肢とKQLの基本を整理する</h1>
+    <p>2026-05-20 / Azure / Grafana / Azure Monitor / Log Analytics / KQL / Sentinel</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        前回、Azure Monitor dashboards with Grafana を使って、Microsoft Sentinel / Log Analytics の Heartbeat を Grafana 形式で表示できることを確認しました。
+        その中で気になったのが、Azure Monitor dashboards with Grafana と Azure Managed Grafana の違いです。
+      </p>
+      <p>
+        最初はどちらも「Azure の Grafana」なので、同じものを別の入口から見ているだけなのかと誤解しそうになりました。
+        さらに Grafana で使っている KQL についても、SQL と同じようなものなのか、どう理解すればよいのかを整理したくなりました。
+      </p>
+      <p>
+        今回は、Grafana の選択肢と KQL の基本を、自分の理解に合わせて整理します。
+      </p>
+      <p class="article-note">
+        関連: <a href="sentinel-log-analytics-grafana-dashboard.html">SentinelのログをAzure Monitor dashboards with Grafanaで可視化してみた</a>
+      </p>
+    </section>
+
+    <section>
+      <h2>Azure Monitor dashboards with Grafana は何か</h2>
+      <p>
+        Azure Monitor dashboards with Grafana は、Azure Portal 内で使える Grafana 形式のダッシュボード機能です。
+        ユーザーは Grafana サーバーを構築せず、Grafana 本体の運用も行いません。
+        その意味では、SaaS 的に使える Grafana ビューと考えると分かりやすいです。
+      </p>
+      <p>
+        ただし、Grafana Cloud のような汎用 SaaS Grafana ではありません。
+        Azure Portal 内で、Azure Monitor 系の監視データを Grafana 形式で見るための機能と理解するとよさそうです。
+      </p>
+      <p>
+        今回の理解では、Azure Monitor dashboards with Grafana は、Azure Portal に組み込まれた SaaS 的な Grafana ビューです。
+        外部データソースを自由につなぐ汎用 Grafana というより、Azure Monitor / Log Analytics / Azure Resource Graph / Azure Data Explorer など、
+        Azure 側にある監視・分析データを可視化する用途に向いています。
+      </p>
+    </section>
+
+    <section>
+      <h2>Azure Managed Grafana は何か</h2>
+      <p>
+        Azure Managed Grafana は、Azure 上に作成するマネージド Grafana サービスです。
+        Azure App Service や Azure Database のように、基盤運用の多くを Azure 側に任せる PaaS 的なサービスとして理解すると分かりやすいです。
+      </p>
+      <p>
+        ユーザーは OS に Grafana をインストールしたり、OS 更新をしたりする必要はありません。
+        Microsoft 側が Grafana サービスの基盤を管理してくれます。
+        ただし、完全に自由な自前 Grafana ではなく、Azure のマネージドサービスとして提供される Grafana を使う形です。
+      </p>
+      <p>
+        つまり、Azure Managed Grafana は素の Grafana をそのまま自分で入れるものではなく、
+        Azure 上で Microsoft が管理してくれる Grafana サービスです。
+      </p>
+    </section>
+
+    <section>
+      <h2>素のGrafanaを使う場合</h2>
+      <p>
+        素の Grafana を使いたい場合は、Azure VM、オンプレ VM、Docker、Kubernetes などに自分で Grafana をインストールします。
+        Azure で考えるなら、IaaS 上に自分で構築する形です。
+      </p>
+      <p>
+        自由度は高い一方で、OS、Grafana のアップデート、証明書、バックアップ、可用性、認証設定などを自分で管理する必要があります。
+        検証用途や自由に触りたい場合はよいですが、運用負荷も自分持ちになります。
+      </p>
+    </section>
+
+    <section>
+      <h2>3種類の比較</h2>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>比較項目</th>
+              <th>Azure Monitor dashboards with Grafana</th>
+              <th>Azure Managed Grafana</th>
+              <th>素のGrafana on VM / コンテナ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ざっくり分類</td>
+              <td>SaaS 的な Azure Portal 組み込み機能</td>
+              <td>PaaS 的なマネージド Grafana</td>
+              <td>IaaS / 自前構築</td>
+            </tr>
+            <tr>
+              <td>サーバー管理</td>
+              <td>不要</td>
+              <td>不要</td>
+              <td>必要</td>
+            </tr>
+            <tr>
+              <td>Grafana本体の管理</td>
+              <td>不要</td>
+              <td>Azure 側に任せる</td>
+              <td>必要</td>
+            </tr>
+            <tr>
+              <td>主な用途</td>
+              <td>Azure Monitor / Log Analytics の可視化</td>
+              <td>独立した Grafana ポータルとして本格運用</td>
+              <td>自由度重視、自前運用</td>
+            </tr>
+            <tr>
+              <td>外部データソース</td>
+              <td>基本的には Azure 側の監視・分析データ中心</td>
+              <td>Azure Monitor 以外も扱いやすい</td>
+              <td>自由度が高い</td>
+            </tr>
+            <tr>
+              <td>アラート</td>
+              <td>本格的な Grafana アラート用途ではない</td>
+              <td>利用可能</td>
+              <td>自分で構成すれば利用可能</td>
+            </tr>
+            <tr>
+              <td>レポート</td>
+              <td>本格的なスケジュールレポート用途ではない</td>
+              <td>利用可能な構成がある</td>
+              <td>自分で構成</td>
+            </tr>
+            <tr>
+              <td>認証</td>
+              <td>Azure Portal 利用者の権限ベース</td>
+              <td>Managed Identity、サービスプリンシパル、Azure 権限管理など</td>
+              <td>自分で構成</td>
+            </tr>
+            <tr>
+              <td>料金の考え方</td>
+              <td>Grafana 機能自体は追加コストを避けやすい。ただし Log Analytics / Sentinel の取り込み・保持費用は別</td>
+              <td>SKU やアクティブユーザーなどの課金がある</td>
+              <td>VM やストレージ、運用工数がかかる</td>
+            </tr>
+            <tr>
+              <td>今回の用途に合うか</td>
+              <td>最適</td>
+              <td>今回の軽い検証ではやや過剰</td>
+              <td>学習にはよいが、Azure Monitor の軽い確認には過剰</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>外部装置は見られるのか</h2>
+      <p>
+        Azure Monitor dashboards with Grafana は、外部ストレージやネットワーク機器へ直接接続して監視するための汎用 Grafana ではありません。
+        外部装置へ直接 SNMP や API で取りに行く用途ではない、という整理です。
+      </p>
+      <p>
+        ただし、外部装置やオンプレサーバーのログを Azure Monitor / Log Analytics に取り込んでいれば表示できます。
+        つまり表示対象は、「Azure Monitor / Log Analytics など Azure 側に集約された監視データ」です。
+        直接収集したい場合は、Azure Managed Grafana や素の Grafana を検討するほうが自然です。
+      </p>
+      <p><strong>直接は向かない例:</strong></p>
+      <pre><code>外部装置 / オンプレ機器
+  ↓ 直接SNMP/API
+Azure Monitor dashboards with Grafana</code></pre>
+      <p><strong>向いている例:</strong></p>
+      <pre><code>外部装置 / オンプレサーバー
+  ↓ AMA / Azure Arc / DCR / 何らかの収集基盤
+Log Analytics Workspace
+  ↓
+Azure Monitor dashboards with Grafana</code></pre>
+    </section>
+
+    <section>
+      <h2>Managed Grafanaでできること</h2>
+      <p>
+        Azure Managed Grafana は、ダッシュボード表示だけでなく、本格的な Grafana 運用機能を使うためのサービスです。
+        Grafana アラート、スケジュールレポート、外部データソース連携、認証・権限管理、Managed Identity、サービスプリンシパル、
+        Private Link などの閉域構成を使う場合に検討対象になります。
+      </p>
+      <p>
+        ただし、「スケジューラ」という表現は注意が必要です。
+        cron のように任意の処理を実行する汎用スケジューラではなく、ダッシュボードの定期レポートや Grafana の通知・運用機能として理解します。
+      </p>
+      <ul>
+        <li>Grafana アラート: Zabbix のトリガーや Sentinel の分析ルールに近い。</li>
+        <li>スケジュールレポート: 毎週月曜に監視状況 PDF をメールで送る定期報告に近い。</li>
+        <li>Managed Identity: Azure VM から Key Vault へシークレットなしでアクセスする考え方と近い。</li>
+        <li>サービスプリンシパル: Terraform や GitHub Actions が Azure へログインするためのアプリ ID に近い。</li>
+        <li>Private Link: Storage Account を Private Endpoint 経由だけにする構成に近い。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>最小構成の料金感</h2>
+      <p>
+        Azure Managed Grafana を最小構成で作る場合の概算も確認しました。
+        ただし価格は変わる可能性があるため、ここでは記事執筆時点の目安として扱います。
+        正式には Azure 料金計算ツールと Azure Managed Grafana の料金ページで確認してください。
+      </p>
+      <ul>
+        <li>SKU: Standard X1</li>
+        <li>Zone redundancy: 無効</li>
+        <li>Grafana Enterprise: 無効</li>
+        <li>ユーザー: 自分1人</li>
+        <li>Standard X1 は 2 Standard Units</li>
+        <li>1 Standard Unit が $0.043/時間の場合、2 × $0.043 × 730時間 = 約 $62.78/月</li>
+        <li>アクティブユーザー1人が $6/月の場合、合計は約 $68.78/月</li>
+        <li>1ドル155円換算なら約10,661円/月</li>
+      </ul>
+      <p>
+        ここに Log Analytics / Sentinel のログ取り込み・保持費用は含まれません。
+        30日無料枠があっても、放置すると固定費になるため注意が必要です。
+      </p>
+    </section>
+
+    <section>
+      <h2>KQLはSQLと同じなのか</h2>
+      <p>
+        KQL は SQL と似た目的で使うことはありますが、同じものではありません。
+        自分の場合は、SQL との比較よりも Linux コマンドのパイプとして理解した方が分かりやすかったです。
+      </p>
+      <p>
+        KQL は、ログを上から順番に絞って、整形して、集計する言語として理解します。
+        処理はパイプ <code>|</code> でつなぎます。
+      </p>
+      <p><strong>Linuxコマンドの例:</strong></p>
+      <pre><code class="language-bash">cat log.txt | grep error | sort</code></pre>
+      <p><strong>KQLの例:</strong></p>
+      <pre><code class="language-kusto">Heartbeat
+| where TimeGenerated > ago(6h)
+| where OSType == "Linux"
+| summarize Count=count() by bin(TimeGenerated, 15m), Computer
+| order by TimeGenerated asc</code></pre>
+      <p>
+        Linux コマンドのパイプと同じように、KQL も <code>|</code> で処理をつなぎます。
+        ただし、横に長く書くのではなく、読みやすいように改行しています。
+        そのため、「パイプの形のまま改行したもの」と理解すると分かりやすいです。
+      </p>
+    </section>
+
+    <section>
+      <h2>KQLの基本操作</h2>
+      <p>KQL の基本イメージは、次の流れです。</p>
+      <pre><code>テーブルを読む
+  ↓
+条件で絞る
+  ↓
+必要な列だけ見る
+  ↓
+集計する
+  ↓
+並び替える</code></pre>
+      <p>まず覚える操作は、次のあたりです。</p>
+      <ul>
+        <li><code>where</code>: <code>grep</code> に近い。条件で絞る。</li>
+        <li><code>project</code>: <code>cut</code> に近い。表示する列を選ぶ。</li>
+        <li><code>order by</code>: <code>sort</code> に近い。並び替える。</li>
+        <li><code>take</code>: <code>head</code> に近い。件数を制限する。</li>
+        <li><code>summarize count()</code>: <code>uniq -c</code> や <code>awk</code> に近い。件数を集計する。</li>
+        <li><code>extend</code>: <code>awk</code> に近い。計算列を追加する。</li>
+        <li><code>contains</code>: <code>grep "文字列"</code> に近い。文字列を含む行を探す。</li>
+        <li><code>bin(TimeGenerated, 15m)</code>: 時刻を15分単位に丸める。Grafana の時系列グラフで重要。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>今回使ったKQLの分解</h2>
+      <p>前回の記事で使った Windows 向けの Heartbeat クエリを分解します。</p>
+      <pre><code class="language-kusto">Heartbeat
+| where TimeGenerated > ago(6h)
+| where OSType == "Windows"
+| summarize Count=count() by bin(TimeGenerated, 15m), Computer
+| order by TimeGenerated asc</code></pre>
+      <ul>
+        <li><code>Heartbeat</code> テーブルを読む。</li>
+        <li>直近6時間に絞る。</li>
+        <li>Windows だけに絞る。</li>
+        <li>15分ごと、<code>Computer</code> ごとに件数を数える。</li>
+        <li>時刻の古い順に並べる。</li>
+      </ul>
+      <p>Linux パイプ風に言えば、次のような感覚です。</p>
+      <pre><code>cat Heartbeat
+  | grep "直近6時間"
+  | grep "Windows"
+  | 15分単位で集計
+  | sort</code></pre>
+      <p>
+        実際の Linux コマンドとしてこのまま動くわけではありませんが、頭の中のモデルとしてはかなり近いと感じました。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回の結論</h2>
+      <ul>
+        <li>Azure Monitor dashboards with Grafana は、Azure Portal 内で使える SaaS 的な Grafana ビュー。</li>
+        <li>Azure Managed Grafana は、Azure 上に作る PaaS 的なマネージド Grafana。</li>
+        <li>素の Grafana は、VM やコンテナに自分で構築する IaaS / 自前運用のイメージ。</li>
+        <li>Azure Monitor dashboards with Grafana は、Azure Monitor / Log Analytics など Azure 側の監視データを見る用途に向いている。</li>
+        <li>外部データソース、Grafana アラート、スケジュールレポート、Private Link、Managed Identity などが必要になったら Azure Managed Grafana を検討する。</li>
+        <li>今回のような Sentinel / Log Analytics の Heartbeat 確認なら、Azure Monitor dashboards with Grafana で十分。</li>
+        <li>KQL は SQL よりも、Linux コマンドのパイプ処理に近いと考えると理解しやすい。</li>
+        <li>KQL は、テーブルから始めて、<code>where</code> / <code>project</code> / <code>summarize</code> / <code>order by</code> をパイプでつないでいく。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>参考リンク</h2>
+      <ul>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/visualize/grafana-plugin">Visualize Azure Monitor data with Grafana</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/app/grafana-dashboards">Dashboards with Grafana in Application Insights</a></li>
+        <li><a href="https://azure.microsoft.com/en-us/pricing/details/managed-grafana/">Azure Managed Grafana pricing</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

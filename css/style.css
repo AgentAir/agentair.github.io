@@ -70,6 +70,10 @@ h2 {
   background: #ffffff;
 }
 
+.card + .card {
+  margin-top: 16px;
+}
+
 .card h3 {
   margin-top: 0;
 }
@@ -82,6 +86,25 @@ h2 {
   margin-right: 6px;
   border-radius: 999px;
   font-size: 0.85rem;
+}
+
+.article-meta {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0 0 10px;
+}
+
+.article-meta time {
+  font-weight: 700;
+}
+
+.article-category {
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.article-summary {
+  margin-bottom: 0;
 }
 
 .article-table-wrapper {

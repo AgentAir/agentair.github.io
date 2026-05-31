@@ -22,240 +22,140 @@
   <main class="container">
     <section>
       <h2>記事一覧</h2>
-      <p>カテゴリ別に記事を整理しています。</p>
-    </section>
-
-    <section>
-      <h2>Windows / Office</h2>
-      <article class="card">
-        <p>
-          <span class="tag">Outlook</span>
-          <span class="tag">Microsoft Office</span>
-          <span class="tag">Windows</span>
-        </p>
-        <h3>
-          <a href="articles/2026-05-outlook-view-reset.html">
-            従来版 Outlook のメール一覧表示が狭くなったときの戻し方
-          </a>
-        </h3>
-        <p>
-          従来版 Outlook でメール一覧の間隔が狭くなった場合に、コンパクト表示、メッセージプレビュー1行、閲覧ウィンドウ右、間隔を狭くするオフの状態へ戻す手順を整理します。
-        </p>
-      </article>
-    </section>
-
-    <section>
-      <h2>Network / Security</h2>
-      <article class="card">
-        <p>
-          <span class="tag">Soliton</span>
-          <span class="tag">Authentication</span>
-          <span class="tag">Study Log</span>
-        </p>
-        <h3>
-          <a href="articles/2026-05-soliton-products-auth-overview.html">
-            Soliton製品群の役割整理：FileZen S / SecureBrowser / SmartOn / OneGate / NetAttest EPS の違い
-          </a>
-        </h3>
-        <p>
-          FileZen S、SecureBrowser / SecureGateway、SmartOn、OneGate、NetAttest EPS の違いを、自治体NW、インターネット分離、RADIUS、MFA、SSO、ファイル受け渡しの文脈で整理します。
-          最初に混同した点から、最終的に落ち着いた理解までを学習ログとして残します。
-        </p>
-      </article>
+      <p>記事をテーマ別に整理しています。各カテゴリ内では新しい記事から順に並べています。</p>
     </section>
 
     <section>
       <h2>Azure / Cloud</h2>
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Grafana</span>
-          <span class="tag">Azure Monitor</span>
-          <span class="tag">Log Analytics</span>
-          <span class="tag">KQL</span>
-          <span class="tag">Sentinel</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-20">2026-05-20</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/azure-grafana-options-and-kql-basics.html">
             AzureのGrafana選択肢とKQLの基本を整理する
           </a>
         </h3>
-        <p>
-          Azure Monitor dashboards with Grafana、Azure Managed Grafana、素のGrafanaの違いを整理し、
-          Sentinel / Log Analytics の可視化で使った KQL を Linux コマンドのパイプに近い感覚で理解します。
+        <p class="article-summary">
+          Azureで使えるGrafanaの選択肢と、Log Analyticsを読むためのKQLの基本を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Sentinel</span>
-          <span class="tag">Grafana</span>
-          <span class="tag">Log Analytics</span>
-          <span class="tag">Monitoring</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-19">2026-05-19</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/sentinel-log-analytics-grafana-dashboard.html">
             SentinelのログをAzure Monitor dashboards with Grafanaで可視化してみた
           </a>
         </h3>
-        <p>
-          Sentinel のログを Azure Managed Grafana ではなく Azure Monitor dashboards with Grafana で可視化した検証メモです。
-          Log Analytics Workspace を選び、Heartbeat を KQL で表示しながら、最初に迷いやすい点と今回の学びを整理します。
+        <p class="article-summary">
+          SentinelのログをAzure Monitor dashboards with Grafanaで可視化した検証手順と学びを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Resource Manager</span>
-          <span class="tag">Subscription</span>
-          <span class="tag">Migration</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-18">2026-05-18</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/azure-resource-move-support-checklist.html">
             Azure リソースは全部サブスクリプション移動できるわけではない：移動できるもの・作り直すものの整理
           </a>
         </h3>
-        <p>
-          Azure リソースを別リソースグループ／別サブスクリプションへ移すときに、
-          VM や VNet のように移動候補になるものと、DCR、Sentinel 設定、Private Endpoint、Bastion のように作り直し前提で考えるものを整理します。
+        <p class="article-summary">
+          Azure Resource Moveの基本前提と、移動できるもの・作り直すものを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Microsoft Sentinel</span>
-          <span class="tag">Azure Arc</span>
-          <span class="tag">AMA</span>
-          <span class="tag">DCR</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-14">2026-05-14</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-05-ubuntu-syslog-sentinel-ama-dcr.html">
             Ubuntu の Syslog を Azure Arc / AMA / DCR 経由で Microsoft Sentinel に収集する手順
           </a>
         </h3>
-        <p>
-          Ubuntu が Azure Arc に接続されているだけでは Syslog は Sentinel に送られません。
-          AMA、DCR、configchunks、Heartbeat、Syslog テーブルを順番に確認し、収集成功までの流れを整理します。
+        <p class="article-summary">
+          UbuntuのSyslogをAzure Arc、AMA、DCR経由でSentinelへ収集する流れを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Microsoft Sentinel</span>
-          <span class="tag">Azure Arc</span>
-          <span class="tag">AMA</span>
-        </p>
-        <h3>
-          <a href="articles/2026-05-sentinel-arc-required-for-non-azure.html">
-            Azure VM以外でMicrosoft Sentinelを使うにはAzure Arcが必須なのか整理した
-          </a>
-        </h3>
-        <p>
-          「Azure VM以外は必ずAzure Arcが必要」と単純に覚えるのではなく、
-          AMA + DCRで収集する場合と、Syslog / CEF、SaaSコネクタ、API連携などArcなしでよい場合を分けて整理します。
-        </p>
-      </article>
-
-      <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Azure Arc</span>
-          <span class="tag">Sentinel</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-13">2026-05-13</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-05-azure-arc-reconnect-check-before-reinstall.html">
             Azure Arcは再インストール前にまず状態確認：UbuntuがConnectedだった話
           </a>
         </h3>
-        <p>
-          Windows 11のAzure Arc再接続後、Ubuntuも再インストールし直すつもりでしたが、実際にはすでにConnectedでした。
-          azcmagent showで状態と接続先を確認してから判断する流れを整理します。
+        <p class="article-summary">
+          Azure Arcの再インストール前に、azcmagentで状態と接続先を確認する流れを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Storage</span>
-          <span class="tag">SAS</span>
+        <p class="article-meta"><time datetime="2026-05-13">2026-05-13</time> / <span class="article-category">Azure / Cloud</span></p>
+        <h3>
+          <a href="articles/2026-05-sentinel-arc-required-for-non-azure.html">
+            Azure VM以外でMicrosoft Sentinelを使うにはAzure Arcが必須なのか整理した
+          </a>
+        </h3>
+        <p class="article-summary">
+          SentinelでAzure Arcが必要になる収集方式と、Arcなしでよい連携方式を整理した記事。
         </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-04-azure-storage-sas-errors.html">
             Azure StorageのSAS URLで詰まったエラーを整理する
           </a>
         </h3>
-        <p>
-          Azure StorageのSAS URLでアクセスした際に発生したAuthenticationFailed、PublicAccessNotPermitted、AuthorizationPermissionMismatchなどのエラーを整理します。
+        <p class="article-summary">
+          Azure StorageのSAS URLで発生した認証・公開アクセス・権限エラーを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Bastion</span>
-          <span class="tag">NSG</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-04-azure-bastion-nsg-jit.html">
             Azure BastionとNSGとJIT Network Accessで混乱したこと
           </a>
         </h3>
-        <p>
-          Azure VMへの接続検証で混乱しやすいAzure Bastion、NSG、JIT Network Accessの役割を分けて整理します。
+        <p class="article-summary">
+          Azure VM接続で混乱しやすいBastion、NSG、JIT Network Accessの役割を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Azure Arc</span>
-          <span class="tag">Hybrid Cloud</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-04-azure-arc-for-hybrid-machines.html">
             Azure ArcはAzure VMではなくオンプレ・他クラウド向けだと理解した話
           </a>
         </h3>
-        <p>
-          Azure ArcをAzure VMに入れようとして混乱した経験をもとに、Azure Arc-enabled serversの主な対象がオンプレミスや他クラウドのサーバーであることを整理します。
+        <p class="article-summary">
+          Azure Arc-enabled serversの対象がオンプレミスや他クラウドのサーバーであることを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Private Endpoint</span>
-          <span class="tag">Storage</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-04-azure-private-endpoint-storage.html">
             Azure Private EndpointでStorageへプライベート接続する検証メモ
           </a>
         </h3>
-        <p>
-          Azure VMからStorage AccountへPrivate Endpoint経由で接続する検証メモです。
-          名前解決、SAS、Storage Firewall、エラー切り分けで詰まった点を整理します。
+        <p class="article-summary">
+          Azure VMからStorage AccountへPrivate Endpoint経由で接続する検証内容を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Azure</span>
-          <span class="tag">Network</span>
-          <span class="tag">Study Log</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-29">2026-04-29</time> / <span class="article-category">Azure / Cloud</span></p>
         <h3>
           <a href="articles/2026-04-azure-network-first-step.html">
             ネットワークエンジニアがAzureネットワークを学び始めて最初につまずいたこと
           </a>
         </h3>
-        <p>
-          VNet、Subnet、NSG、Bastion、Private Endpointなどを、
-          オンプレミスネットワーク経験者の視点で整理する予定です。
+        <p class="article-summary">
+          Azureネットワークを学び始めたときに、オンプレ経験者の視点でつまずいた点を整理する記事。
         </p>
       </article>
     </section>
@@ -263,226 +163,227 @@
     <section>
       <h2>Terraform / IaC</h2>
       <article class="card">
-        <p>
-          <span class="tag">Terraform</span>
-          <span class="tag">IaC</span>
-          <span class="tag">Network</span>
-        </p>
-        <h3>
-          <a href="articles/2026-04-terraform-for-network-engineer.html">
-            Terraformとは何かをネットワークエンジニア目線で整理する
-          </a>
-        </h3>
-        <p>
-          ネットワークエンジニアの視点で、Terraformの基本概念と、従来の手順書・コンフィグ管理との違いを整理します。
-        </p>
-      </article>
-
-      <article class="card">
-        <p>
-          <span class="tag">Terraform</span>
-          <span class="tag">Azure</span>
-          <span class="tag">VNet</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Terraform / IaC</span></p>
         <h3>
           <a href="articles/2026-04-terraform-azure-vnet-before-build.html">
             TerraformでAzure VNetを作る前に理解したいこと
           </a>
         </h3>
-        <p>
-          TerraformでAzure VNetを作成する前に、Resource Group、Address Space、Subnet、NSG、Route Tableなど、設計時に理解しておきたい要素を整理します。
+        <p class="article-summary">
+          TerraformでAzure VNetを作る前に理解したい設計要素を整理した記事。
+        </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Terraform / IaC</span></p>
+        <h3>
+          <a href="articles/2026-04-terraform-for-network-engineer.html">
+            Terraformとは何かをネットワークエンジニア目線で整理する
+          </a>
+        </h3>
+        <p class="article-summary">
+          ネットワークエンジニアの視点でTerraformの基本概念と従来運用との違いを整理した記事。
         </p>
       </article>
     </section>
 
     <section>
-      <h2>GitHub / Blog Operation</h2>
+      <h2>Network Automation</h2>
       <article class="card">
-        <p>
-          <span class="tag">Codex</span>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">Automation</span>
+        <p class="article-meta"><time datetime="2026-05-13">2026-05-13</time> / <span class="article-category">Network Automation</span></p>
+        <h3>
+          <a href="articles/2026-05-soliton-products-auth-overview.html">
+            Soliton製品群の役割整理：FileZen S / SecureBrowser / SmartOn / OneGate / NetAttest EPS の違い
+          </a>
+        </h3>
+        <p class="article-summary">
+          Soliton製品群の役割を、認証・分離ネットワーク・RADIUSなどの文脈で整理した記事。
         </p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Lab Notes</h2>
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-05-14">2026-05-14</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-05-codex-from-clipboard-automation.html">
             Codex依頼をクリップボードから保存して記事作成につなげる流れ
           </a>
         </h3>
-        <p>
-          <code>Start-CodexFromClipboard.ps1</code> を使って、Codex依頼文の保存、作業前チェック、Codex実行、差分確認、秘密情報チェックまでを半自動化する流れを整理します。
+        <p class="article-summary">
+          Start-CodexFromClipboard.ps1で依頼保存から差分確認までを半自動化する流れを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Codex</span>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">Blog Operation</span>
+        <p class="article-meta"><time datetime="2026-05-14">2026-05-14</time> / <span class="article-category">Lab Notes</span></p>
+        <h3>
+          <a href="articles/2026-05-start-codex-from-clipboard-command-learning.html">
+            Start-CodexFromClipboard.ps1 の一行依頼から学んだ Codex 記事化フロー
+          </a>
+        </h3>
+        <p class="article-summary">
+          短いCodex依頼から、記事作成フローと作業前後の確認ポイントを読み解いた記事。
         </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-05-14">2026-05-14</time> / <span class="article-category">Lab Notes</span></p>
+        <h3>
+          <a href="articles/2026-05-start-codex-from-clipboard-request.html">
+            Start-CodexFromClipboard.ps1を記事作成の入口として見直したメモ
+          </a>
+        </h3>
+        <p class="article-summary">
+          Codex記事作成の入口として、依頼保存・作業前確認・レビューの流れを整理した記事。
+        </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-05-13">2026-05-13</time> / <span class="article-category">Lab Notes</span></p>
+        <h3>
+          <a href="articles/2026-05-outlook-view-reset.html">
+            従来版 Outlook のメール一覧表示が狭くなったときの戻し方
+          </a>
+        </h3>
+        <p class="article-summary">
+          従来版Outlookのメール一覧表示が狭くなったときの表示設定の戻し方を整理した記事。
+        </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-05-03">2026-05-03</time> / <span class="article-category">Lab Notes</span></p>
+        <h3>
+          <a href="articles/2026-05-codex-article-semi-automation.html">
+            Codexで記事を半自動生成する方法
+          </a>
+        </h3>
+        <p class="article-summary">
+          記事テンプレートとプロンプト雛形を使い、Codexで記事作成を半自動化する流れを整理した記事。
+        </p>
+      </article>
+
+      <article class="card">
+        <p class="article-meta"><time datetime="2026-05-03">2026-05-03</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-05-codex-blog-workflow.html">
             CodexでGitHub Pagesブログを安全に更新する実践手順
           </a>
         </h3>
-        <p>
-          GitHub Pagesブログをローカルにcloneし、git status、構成確認、小さな記事追加、git diffでの差分確認まで、Codexを使った安全な更新手順を整理します。
+        <p class="article-summary">
+          CodexでGitHub Pagesブログを安全に更新するための作業手順を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Codex</span>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">Blog Operation</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-03">2026-05-03</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-05-codex-blog-maintenance.html">
             CodexでGitHub Pagesブログを安全に保守するための初期導入メモ
           </a>
         </h3>
-        <p>
-          CodexでGitHub Pagesブログを保守するために、clone、git status、構成確認、小さなREADME更新、差分確認、commit / pushまでの流れを整理します。
+        <p class="article-summary">
+          CodexでGitHub Pagesブログを保守する前の初期導入と確認手順を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Codex</span>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">Windows</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-01">2026-05-01</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-04-codex-cli-setup-for-github-pages-blog.html">
             別PCでCodex CLIを使ってGitHub Pagesブログを更新できるようにする手順
           </a>
         </h3>
-        <p>
-          自宅PCや別PCでもGitHub Pagesブログを更新できるように、Node.js、Codex CLI、GitHubリポジトリclone、Codex起動、git commit / push までの再現手順を整理します。
+        <p class="article-summary">
+          別PCでCodex CLIを使い、GitHub Pagesブログを更新できるようにする手順を整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">Blog Operation</span>
-          <span class="tag">Study Log</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-04-github-pages-blog-10-articles-log.html">
             GitHub Pagesブログを10記事まで育てて整理した作業ログ
           </a>
         </h3>
-        <p>
-          GitHub Pagesで個人ブログを作成し、10記事まで増やして、トップページ整理・カテゴリ分け・README更新・コードブロックCSS改善まで実施した作業ログです。
+        <p class="article-summary">
+          GitHub Pagesブログを10記事まで増やしたときの整理作業と改善点を記録した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">Claude Code</span>
-          <span class="tag">GitHub</span>
-          <span class="tag">Windows</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-04-claude-code-windows-github-pages.html">
             Claude CodeをWindowsに入れてGitHub Pagesブログを更新するまで
           </a>
         </h3>
-        <p>
-          Windows環境にClaude Codeを導入し、GitHub Pagesで公開している手書きHTML/CSSブログを更新するまでの流れと、PATH、Git設定、GitHub認証で詰まった点を整理します。
+        <p class="article-summary">
+          Windows環境にClaude Codeを導入し、GitHub Pagesブログを更新するまでの流れを整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">GitHub</span>
-          <span class="tag">GitHub Pages</span>
-          <span class="tag">HTML/CSS</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Lab Notes</span></p>
         <h3>
           <a href="articles/2026-04-github-pages-static-blog.html">
             GitHub Pagesで手書きHTML/CSSブログを公開するまで
           </a>
         </h3>
-        <p>
-          GitHub Pagesを使って、手書きHTML/CSSの個人ブログを公開した手順と、
-          リポジトリ名、相対パス、反映待ちで詰まった点を整理します。
+        <p class="article-summary">
+          手書きHTML/CSSブログをGitHub Pagesで公開する手順と詰まった点を整理した記事。
         </p>
       </article>
     </section>
 
     <section>
-      <h2>AI / Study Log</h2>
+      <h2>Career / Study</h2>
       <article class="card">
-        <p>
-          <span class="tag">生成AI</span>
-          <span class="tag">ChatGPT</span>
-          <span class="tag">Claude</span>
-          <span class="tag">AI活用</span>
-          <span class="tag">ツール比較</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-05-27">2026-05-27</time> / <span class="article-category">Career / Study</span></p>
         <h3>
           <a href="articles/chatgpt-claude-answer-style.html">
             ChatGPTとClaudeの違いを調べてみた：性能差より「回答の作法」が違う
           </a>
         </h3>
-        <p>
-          ChatGPTとClaudeを単純な性能差ではなく、回答の作法や向いている相談の違いとして整理します。
+        <p class="article-summary">
+          ChatGPTとClaudeを単純な性能差ではなく、回答の作法や向いている相談の違いとして整理した記事。
         </p>
       </article>
 
       <article class="card">
-        <p>
-          <span class="tag">ChatGPT</span>
-          <span class="tag">OneNote</span>
-          <span class="tag">Study Log</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Career / Study</span></p>
         <h3>
           <a href="articles/2026-04-chatgpt-onenote-study-log.html">
             ChatGPTとOneNoteで資格学習ログを残す自分なりの方法
           </a>
         </h3>
-        <p>
-          資格学習でChatGPTとOneNoteを使い、理解した内容を後から見返せる学習ログとして残す自分なりの方法を整理します。
+        <p class="article-summary">
+          ChatGPTとOneNoteを使って資格学習ログを残し、後から見返す方法を整理した記事。
         </p>
       </article>
-    </section>
 
-    <section>
-      <h2>Life / Workstyle</h2>
       <article class="card">
-        <p>
-          <span class="tag">Life</span>
-          <span class="tag">Study Log</span>
-          <span class="tag">Habit</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Career / Study</span></p>
         <h3>
           <a href="articles/2026-04-block-short-videos-for-study.html">
             学習時間を守るためにショート動画をブロックした話
           </a>
         </h3>
-        <p>
-          資格学習や技術検証の時間を確保するために、YouTube Shorts、TikTok、Instagram Reelsなどのショート動画をブロックし、生活リズムを整えようとした記録です。
+        <p class="article-summary">
+          資格学習や技術検証の時間を確保するため、ショート動画をブロックした記録の記事。
         </p>
       </article>
-    </section>
 
-    <section>
-      <h2>Career</h2>
       <article class="card">
-        <p>
-          <span class="tag">Career</span>
-          <span class="tag">Study Log</span>
-          <span class="tag">AI</span>
-        </p>
+        <p class="article-meta"><time datetime="2026-04-30">2026-04-30</time> / <span class="article-category">Career / Study</span></p>
         <h3>
           <a href="articles/2026-04-why-network-engineer-learns-cloud-iac-ai.html">
             ネットワークエンジニアがクラウド・IaC・生成AIを学ぶ理由
           </a>
         </h3>
-        <p>
-          ネットワークエンジニアとして、なぜクラウド、IaC、生成AIを学ぶのか。
-          これまでの経験と今後の学習方針を整理します。
+        <p class="article-summary">
+          ネットワークエンジニアとしてクラウド、IaC、生成AIを学ぶ理由と方針を整理した記事。
         </p>
       </article>
     </section>

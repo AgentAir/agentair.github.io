@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCIE Automationまでのロードマップを立て直したメモ（制度変更を踏まえて） - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>CCIE Automationまでのロードマップを立て直したメモ（制度変更を踏まえて）</h1>
+    <p>2026-06-03 / Career / Study</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        CCIE Automation（旧 DevNet Expert）を最終目標として、そこに至るまでの資格ロードマップを立て直したときのメモです。後から「どういう順序・考え方で進めることにしたか」を思い出せるように残しておきます。
+      </p>
+      <p>
+        この記事は学習・キャリアの進め方を整理した個人の運用メモです。試験問題の本文は含みません。制度に関する事実は記事末尾のCisco公式情報を参照しています。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初の思い込みと、調べて分かったこと</h2>
+      <p>
+        着手前は「Expert（CCIE）まで行くには、いくつも資格を積み上げないと辿り着けない」と漠然と重く感じていた。だが制度を確認したところ、状況はかなり違っていた。
+      </p>
+      <p>
+        2026年2月3日にCisco DevNet認定がAutomationトラックへ移行し、DevNet AssociateはCCNA Automation、DevNet ProfessionalはCCNP Automation、DevNet ExpertはCCIE Automationに名称変更された。既存の有効な認定は自動移行され、再受験は不要。
+      </p>
+      <p>
+        自分はDevNet Associateを保有していたため、すでにCCNA Automation保有者になっていた。さらにCCIE Automationの受験には必須の前提資格がなく（必要なのは実務経験）、筆記要件はCCNP Automation Core（AUTOCOR / 350-901）が兼ねる。
+      </p>
+      <p>
+        つまり制度上「これから取得が必須な資格」はCCNP Automation 1枚だけだった。「積み上げないと辿り着けない」という重さは、実際には存在しなかった。
+      </p>
+    </section>
+
+    <section>
+      <h2>ロードマップ</h2>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>時期</th>
+              <th>やること</th>
+              <th>位置づけ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>〜2026夏</td>
+              <td>AZ-104</td>
+              <td>会社指示の宿題。最短で消す。CCIEとは直結しない</td>
+            </tr>
+            <tr>
+              <td>2026後半</td>
+              <td>Terraform 資格</td>
+              <td>AZ-104とCCNPの両方に効く土台。純粋に興味がある領域</td>
+            </tr>
+            <tr>
+              <td>〜2027前半</td>
+              <td>CCNP Automation（AUTOCOR）</td>
+              <td>唯一の取得必須資格。CCIEの筆記要件も兼ねる</td>
+            </tr>
+            <tr>
+              <td>2027通年</td>
+              <td>ラボ習熟期間</td>
+              <td>NSO・Nexus・SD-WANを実機で反復。合否を分ける</td>
+            </tr>
+            <tr>
+              <td>2028前半</td>
+              <td>CCIE Automation ラボ受験</td>
+              <td>8時間の実機ラボ（設計3h＋展開5h）。最終目標</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        TOEIC学習と、業務でのAzureテンプレート作成は、上記の資格レーンとは別レーンで並行する。特に業務テンプレート作成は資格取得を待たず今すぐ着手してよい（実務経験が後のTerraform資格とCCNPの土台になる）。
+      </p>
+    </section>
+
+    <section>
+      <h2>なぜこの順序にしたか</h2>
+      <ul>
+        <li>AZ-104を先頭に置いたのは、会社指示の宿題を早く消したほうが、その後のTerraform〜CCIEに集中できるから。AZ-104自体はCCIE Automation（Ciscoのネットワーク自動化）と技術的に直結しないので、深入りはしない</li>
+        <li>Terraformを土台に置いたのは、AZ-104（AzureをIaCで管理）とCCNP Automation（IaCが試験の中核）の両方に効く交差点だから。三者の中でTerraformだけが純粋に興味の残る領域でもある</li>
+        <li>業務のAzureテンプレート作成のためにTerraform資格を先取りする必要はないと判断した。テンプレート作成に必要なのはHCLの基本とazurermプロバイダのドキュメントを読む力で、資格が問う網羅的な範囲とは重なりが小さい。すでにDevNet・ENAUTO等でAPIや自動化の考え方の土台はあるため、調べながら手を動かせば到達できる</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>自分のための注意点</h2>
+      <ul>
+        <li>「Expert/CCIEラベル」の重さに対して、内容を確認する前に難しいと結論づけないこと。今回も実際に制度を調べたら、必須資格は1枚だけだった</li>
+        <li>このロードマップで唯一不確実性が高いのは、CCIEラボの受験時期（2028前半は保守的な目安）。本当の変数はラボ習熟、特にNSOにどれだけ早く慣れるか</li>
+        <li>ロードマップはこれ以上細かく割らない。直近で実際に動かせるのはAZ-104だけなので、全体図はこの粒度で寝かせ、まずAZ-104を進める。次にこの図を触るのはTerraform着手時で十分</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        制度変更を踏まえて確認した結果、CCIE Automationまでに取得が必須な資格はCCNP Automation 1枚だけだった。順序はAZ-104（宿題）→ Terraform（土台）→ CCNP Automation → ラボ習熟 → CCIE Automationとし、TOEICと業務テンプレート作成は別レーンで並行する。計画はこれ以上いじらず、まずAZ-104から着手する。
+      </p>
+    </section>
+
+    <section>
+      <h2>参考（Cisco公式）</h2>
+      <ul>
+        <li>Cisco Learning Network「A new era for Cisco certifications」: <a href="https://learningnetwork.cisco.com/s/a-new-era-for-cisco-certifications">https://learningnetwork.cisco.com/s/a-new-era-for-cisco-certifications</a></li>
+        <li>Cisco Blogs「Views from an insider on the CCNP Automation track」: <a href="https://blogs.cisco.com/learning/views-from-an-insider-on-the-ccnp-automation-track-autocor-edition">https://blogs.cisco.com/learning/views-from-an-insider-on-the-ccnp-automation-track-autocor-edition</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

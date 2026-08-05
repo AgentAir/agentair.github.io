@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlmaLinuxのrsyslogログをSambaとRobocopyでWindowsへ定期コピーする - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>AlmaLinuxのrsyslogログをSambaとRobocopyでWindowsへ定期コピーする</h1>
+    <p>2026-08-05 / Network Automation / Linux / Syslog</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        ネットワーク機器からAlmaLinuxへ集約したSyslogを、機器IPごとのフォルダー構成を保ったままWindows 11へ定期コピーした検証記録です。当初はAlmaLinuxからWindows上のNXLogへSyslogを再転送する構成を考えましたが、転送されるのはログメッセージであり、AlmaLinux上のフォルダー構成ではないことに気付きました。
+      </p>
+      <p>
+        そこで、rsyslogが作成したファイルをSambaで読み取り専用共有し、WindowsからRobocopyを1時間ごとに実行する構成へ変更しました。この記事では、設定手順だけでなく、構成を見直す中で理解が変わった点と、ACLや文字コードで詰まった点も残します。掲載するIPアドレスはすべてドキュメント用です。
+      </p>
+    </section>
+
+    <section>
+      <h2>構成</h2>
+      <p>最終的な構成は次のとおりです。</p>
+      <pre><code>ネットワーク機器
+    ↓ UDP/514
+AlmaLinux rsyslog
+    ↓
+/var/log/remote/&lt;機器IP&gt;/&lt;日付&gt;.log
+    ↓ Samba共有
+Windows 11
+    ↓ 1時間ごとにRobocopy
+C:\Syslog\remote\&lt;機器IP&gt;\&lt;日付&gt;.log</code></pre>
+      <p>
+        AlmaLinuxはSyslogの受信と一時保管を担当し、Windowsはコピー済みログの長期保管先として使います。Samba共有は読み取り専用とし、Windows側からAlmaLinux上のログを変更しない構成にしました。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に検討したNXLog転送</h2>
+      <p>当初は、次のようにAlmaLinuxからWindows 11上のNXLogへUDP Syslogを転送する構成を検討しました。</p>
+      <pre><code>ネットワーク機器 → AlmaLinux → NXLog</code></pre>
+      <p>Windows側のNXLogでは、送信元アドレスを使って保存先ファイルを決めていました。</p>
+      <pre><code>File 'C:\\Syslog\\' + $MessageSourceAddress + '.log'</code></pre>
+      <p>
+        この設定なら送信元ごとにファイルが分かれるように見えます。しかし、NXLogへ直接パケットを送信するのは元のネットワーク機器ではなくAlmaLinuxです。そのため、NXLogから見た送信元はAlmaLinuxのIPアドレスになります。
+      </p>
+      <pre><code>C:\Syslog\192.0.2.10.log</code></pre>
+    </section>
+
+    <section>
+      <h2>なぜNXLog転送をやめたのか</h2>
+      <p>
+        rsyslogのSyslog転送はログメッセージを次の受信先へ送る仕組みです。次のようなローカルのフォルダー構成を、そのまま転送先へ引き継ぐ仕組みではありません。
+      </p>
+      <pre><code>/var/log/remote/&lt;機器IP&gt;/&lt;日付&gt;.log</code></pre>
+      <p>
+        元の機器IPをメッセージ内へ追加してNXLog側で再解析する設計も考えられますが、今回はすでにrsyslogが期待どおりのフォルダーとファイルを作成しています。目的はその構成を維持してWindowsへ保管することなので、ファイルをそのままコピーするほうが分かりやすいと判断しました。
+      </p>
+      <p>
+        この理解からNXLogへの再転送をやめ、Samba共有とRobocopyを使う構成へ変更しました。
+      </p>
+    </section>
+
+    <section>
+      <h2>AlmaLinuxのrsyslog設定</h2>
+      <p><code>/etc/rsyslog.d/remote.conf</code>へ次の設定を記載しました。</p>
+      <pre><code>module(load="imudp")
+
+template(
+    name="RemoteHostDateLogs"
+    type="string"
+    string="/var/log/remote/%FROMHOST-IP%/%$now%.log"
+)
+
+ruleset(name="remote") {
+    action(
+        type="omfile"
+        dynaFile="RemoteHostDateLogs"
+        createDirs="on"
+    )
+}
+
+input(
+    type="imudp"
+    port="514"
+    ruleset="remote"
+)</code></pre>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>設定</th>
+              <th>役割</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>module(load="imudp")</code></td>
+              <td><code>imudp</code>モジュールを読み込み、UDP Syslogを受信できるようにする</td>
+            </tr>
+            <tr>
+              <td><code>template</code></td>
+              <td>機器IPと日付を使って保存先パスを組み立てる</td>
+            </tr>
+            <tr>
+              <td><code>%FROMHOST-IP%</code></td>
+              <td>rsyslogが受信したSyslogの送信元機器IP</td>
+            </tr>
+            <tr>
+              <td><code>%$now%</code></td>
+              <td>rsyslogが処理した現在の日付</td>
+            </tr>
+            <tr>
+              <td><code>omfile</code></td>
+              <td><code>ruleset</code>内でログをローカルファイルへ保存する</td>
+            </tr>
+            <tr>
+              <td><code>input()</code></td>
+              <td><code>ruleset</code>の外側に記載し、UDP/514の入力を定義する</td>
+            </tr>
+            <tr>
+              <td><code>ruleset="remote"</code></td>
+              <td>受信したログを<code>remote</code> rulesetへ渡す</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>構文を確認してからrsyslogを再起動し、状態を確認しました。</p>
+      <pre><code>sudo rsyslogd -N1
+sudo systemctl restart rsyslog
+sudo systemctl status rsyslog --no-pager</code></pre>
+    </section>
+
+    <section>
+      <h2>Samba共有の構築</h2>
+      <p>Samba本体に加え、ACLとSELinuxの確認に使うパッケージをインストールしました。</p>
+      <pre><code>sudo dnf install -y samba samba-client acl policycoreutils-python-utils</code></pre>
+      <p>共有参照専用のLinuxユーザーを作成し、続けてSambaユーザーとして登録しました。</p>
+      <pre><code>sudo useradd -M -s /sbin/nologin syslogcopy
+sudo smbpasswd -a syslogcopy</code></pre>
+      <ul>
+        <li><code>-M</code>はホームディレクトリを作成しない指定</li>
+        <li><code>/sbin/nologin</code>は、このユーザーによるOSへのログインを禁止する指定</li>
+        <li>Linuxユーザーの作成とSambaユーザーの登録は別の操作</li>
+        <li><code>syslogcopy</code>はSamba共有を参照するためだけに使うユーザー</li>
+      </ul>
+      <p>パスワードは対話入力し、記事やスクリプトには保存していません。</p>
+      <p><code>/etc/samba/smb.conf</code>へ次の共有設定を追加しました。</p>
+      <pre><code>[remote]
+    path = /var/log/remote
+    browseable = yes
+    read only = yes
+    valid users = syslogcopy</code></pre>
+      <p>
+        角括弧内の<code>remote</code>が共有名です。したがって、Windowsからの接続先は次のUNCパスになります。
+      </p>
+      <pre><code>\\192.0.2.10\remote</code></pre>
+      <p>Samba設定を確認し、サービスを有効化・起動しました。</p>
+      <pre><code>sudo testparm -s
+sudo systemctl enable --now smb
+sudo systemctl status smb --no-pager</code></pre>
+      <p>firewalldではSambaサービスを許可しました。</p>
+      <pre><code>sudo firewall-cmd --permanent --add-service=samba
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-services</code></pre>
+    </section>
+
+    <section>
+      <h2>ACLでアクセス拒否を解決</h2>
+      <p>
+        WindowsからSamba共有へ接続したところ、「アクセス許可がない」と表示されました。Samba側で<code>read only = yes</code>と設定しても、Linux側のファイル権限を超えて読み取れるわけではありません。
+      </p>
+      <p>次のACLを設定したところ、<code>syslogcopy</code>で共有を参照できるようになりました。</p>
+      <pre><code>sudo setfacl -R -m u:syslogcopy:rX /var/log/remote
+sudo setfacl -m d:u:syslogcopy:rX /var/log/remote</code></pre>
+      <ul>
+        <li>1行目は、すでに存在するファイルとフォルダーへ<code>syslogcopy</code>の権限を付ける</li>
+        <li>2行目は、今後作成されるファイルとフォルダーへ既定ACLを継承させる</li>
+        <li><code>rX</code>はファイルの読み取りと、ディレクトリをたどるために必要な実行権限を与える</li>
+      </ul>
+      <p>ACLと専用ユーザーからの参照可否は次のコマンドで確認しました。</p>
+      <pre><code>sudo getfacl /var/log/remote
+sudo -u syslogcopy ls -l /var/log/remote</code></pre>
+      <p>
+        今回の環境では、ACL設定後にWindowsから参照可能になりました。SELinuxの設定を変更したとは断定できないため、SELinuxは次のコマンドで状態を確認し、問題が残る場合の切り分け対象とします。
+      </p>
+      <pre><code>getenforce
+getsebool samba_export_all_ro</code></pre>
+      <p class="article-note">
+        SELinuxがEnforcingで読み取り共有を拒否する環境では、影響と組織のポリシーを確認したうえで、<code>sudo setsebool -P samba_export_all_ro on</code>の設定を検討します。今回この設定を実施した、という意味ではありません。
+      </p>
+    </section>
+
+    <section>
+      <h2>Windowsから共有を確認</h2>
+      <p>
+        エクスプローラーまたは「ファイル名を指定して実行」から次のパスを開き、Sambaへ登録した<code>syslogcopy</code>の資格情報で接続しました。
+      </p>
+      <pre><code>\\192.0.2.10\remote</code></pre>
+      <p>
+        機器IPのフォルダーと日付ごとのログが表示され、ファイルを読み取れることを確認します。共有は読み取り専用なので、Windows側からの作成・更新・削除はできない設計です。
+      </p>
+    </section>
+
+    <section>
+      <h2>RobocopyのBAT作成</h2>
+      <p><code>C:\Scripts\copy_syslog.bat</code>として次のBATファイルを保存しました。</p>
+      <pre><code>@echo off
+setlocal
+
+set "SOURCE=\\192.0.2.10\remote"
+set "DEST=C:\Syslog\remote"
+set "LOG=C:\Syslog\robocopy.log"
+
+robocopy "%SOURCE%" "%DEST%" /E /Z /FFT /R:3 /W:10 /COPY:DAT /DCOPY:T /LOG+:"%LOG%"
+
+set "RESULT=%ERRORLEVEL%"
+
+if %RESULT% GEQ 8 exit /b %RESULT%
+exit /b 0</code></pre>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>オプション</th>
+              <th>意味</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>/E</code></td><td>空フォルダーを含むすべてのサブフォルダーを確認対象にする</td></tr>
+            <tr><td><code>/Z</code></td><td>中断したコピーを再開できる再起動可能モードでコピーする</td></tr>
+            <tr><td><code>/FFT</code></td><td>ファイル時刻の比較精度を2秒にし、異なるファイルシステム間の時刻差を吸収する</td></tr>
+            <tr><td><code>/R:3</code></td><td>失敗時の再試行回数を3回にする</td></tr>
+            <tr><td><code>/W:10</code></td><td>再試行まで10秒待つ</td></tr>
+            <tr><td><code>/COPY:DAT</code></td><td>ファイルのデータ、属性、タイムスタンプをコピーする</td></tr>
+            <tr><td><code>/DCOPY:T</code></td><td>ディレクトリのタイムスタンプをコピーする</td></tr>
+            <tr><td><code>/LOG+</code></td><td>実行結果を既存のログファイルへ追記する</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        当初、日本語のフォルダー名をBAT内で使ったところ、BATの文字コードとの組み合わせにより、文字化けした名前のフォルダーが作成されました。今回の保存先は、文字コードの影響を避けるため英数字の<code>remote</code>にしました。
+      </p>
+    </section>
+
+    <section>
+      <h2>Robocopyの差分判定を理解する</h2>
+      <p>
+        <code>/E</code>は、毎回すべてのファイルを無条件にコピーする指定ではありません。空フォルダーを含む全階層を確認対象にする指定です。
+      </p>
+      <pre><code>/E
+→ 空フォルダーを含む全階層を確認対象にする</code></pre>
+      <p>そのうえでRobocopyがコピー元とコピー先を比較し、ファイルごとに処理を決めます。</p>
+      <pre><code>同じファイル  → スキップ
+新規ファイル  → コピー
+更新ファイル  → ファイル単位で再コピー</code></pre>
+      <p>
+        これはファイル内部の追加部分だけを送るrsync形式の差分転送ではありません。Robocopyはファイル単位で差分を判定し、更新されたファイルはそのファイルを再コピーします。
+      </p>
+      <pre><code>AlmaLinux：A.log、更新されたB.log、新規C.log
+Windows  ：A.log、古いB.log
+
+実際にコピーされるもの：
+B.log、C.log</code></pre>
+
+      <h3>Windows側の古いログが消えない理由</h3>
+      <p>今回のBATには、コピー先を同期・削除する次のオプションを付けていません。</p>
+      <pre><code>/MIR
+/PURGE
+/MOVE
+/MOV</code></pre>
+      <p>そのため、AlmaLinux側で古いログが削除されても、Windowsへコピー済みのログは残ります。</p>
+      <pre><code>最初：
+AlmaLinux：A
+Windows  ：A
+
+1週間後：
+AlmaLinux：B、C
+Windows  ：A
+
+Robocopy後：
+Windows  ：A、B、C</code></pre>
+      <p class="article-note">
+        <code>/MIR</code>または<code>/PURGE</code>を使うと、コピー元に存在しないファイルがコピー先からも削除されます。Windows側へログを残す今回の用途では使用しません。
+      </p>
+
+      <h3>Robocopyの終了コード</h3>
+      <p>
+        Robocopyの終了コードは、一般的なコマンドのように「0以外はすべて失敗」ではありません。<code>0～7</code>は正常または警告を含む成功、<code>8以上</code>はコピー失敗を含む結果です。
+      </p>
+      <p>
+        BATではRobocopy直後の<code>%ERRORLEVEL%</code>を保存し、<code>0～7</code>なら正常終了の<code>0</code>へ変換してタスクスケジューラへ返します。<code>8以上</code>は元の終了コードを返すため、失敗として確認できます。
+      </p>
+      <p>実行ログは<code>C:\Syslog\robocopy.log</code>へ追記されます。</p>
+      <pre><code>Get-Content C:\Syslog\robocopy.log -Tail 50</code></pre>
+    </section>
+
+    <section>
+      <h2>タスクスケジューラで1時間ごとに実行</h2>
+      <p>管理者権限のコマンドプロンプトで、1時間ごとにBATを実行するタスクを登録しました。</p>
+      <pre><code>schtasks /create /tn "Syslog Copy" /tr "C:\Scripts\copy_syslog.bat" /sc hourly /mo 1 /st 00:00 /it /f</code></pre>
+      <div class="article-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr><th>オプション</th><th>意味</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>/create</code></td><td>新しいタスクを作成する</td></tr>
+            <tr><td><code>/tn "Syslog Copy"</code></td><td>タスク名を指定する</td></tr>
+            <tr><td><code>/tr</code></td><td>実行するBATファイルを指定する</td></tr>
+            <tr><td><code>/sc hourly</code></td><td>時間単位のスケジュールにする</td></tr>
+            <tr><td><code>/mo 1</code></td><td>1時間ごとに実行する</td></tr>
+            <tr><td><code>/st 00:00</code></td><td>開始時刻を0時にする</td></tr>
+            <tr><td><code>/it</code></td><td>対象ユーザーがログオンしているときだけ対話型で実行する</td></tr>
+            <tr><td><code>/f</code></td><td>同名タスクがある場合に確認なしで上書きする</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="article-note">
+        <code>/it</code>があるため、対象ユーザーがWindowsへログオンしている間だけ実行されます。ログオフ中も確実にコピーする必要がある場合は、実行アカウントや資格情報の扱いを含め、別のタスク設定を検討する必要があります。
+      </p>
+      <p>登録内容の確認と手動実行は次のコマンドで行います。</p>
+      <pre><code>schtasks /query /tn "Syslog Copy" /v /fo list
+
+schtasks /run /tn "Syslog Copy"</code></pre>
+      <p>PowerShellでは、最終実行結果と次回実行時刻も確認できます。</p>
+      <pre><code>Get-ScheduledTask -TaskName "Syslog Copy"
+Get-ScheduledTaskInfo -TaskName "Syslog Copy" |
+    Format-List LastRunTime, LastTaskResult, NextRunTime</code></pre>
+    </section>
+
+    <section>
+      <h2>AlmaLinux側のログを週1回削除</h2>
+      <p>AlmaLinux側の保管量を抑えるため、rootのcrontabを編集しました。</p>
+      <pre><code>sudo crontab -e</code></pre>
+      <pre><code>30 3 * * 0 /usr/bin/find /var/log/remote -type f -delete &amp;&amp; /usr/bin/systemctl restart rsyslog</code></pre>
+      <p>この設定の意味は次のとおりです。</p>
+      <pre><code>毎週日曜日の3時30分
+/var/log/remote配下の全ファイルを削除
+機器IPのフォルダーは残す
+削除後にrsyslogを再起動</code></pre>
+      <p class="article-note">
+        これは「7日より古いファイルだけを削除」する設定ではありません。週次実行時点で<code>/var/log/remote</code>配下に存在するすべてのファイルを削除します。
+      </p>
+      <p>
+        Robocopyには<code>/MIR</code>と<code>/PURGE</code>がないため、AlmaLinux側で削除してもWindows側のコピー済みログは残ります。一方、Windowsが長期間停止してRobocopyが実行されなかった場合は、Windowsへコピーされる前にAlmaLinux側でログが削除される可能性があります。必要な保管期間と停止時間を考慮して、削除間隔を決める必要があります。
+      </p>
+    </section>
+
+    <section>
+      <h2>設定確認コマンド</h2>
+      <p>各レイヤーの確認コマンドをまとめます。</p>
+      <h3>AlmaLinux</h3>
+      <pre><code>sudo rsyslogd -N1
+sudo systemctl status rsyslog --no-pager
+sudo testparm -s
+sudo systemctl status smb --no-pager
+sudo firewall-cmd --list-services
+sudo getfacl /var/log/remote
+sudo -u syslogcopy ls -l /var/log/remote
+sudo crontab -l
+sudo systemctl status crond --no-pager
+sudo find /var/log/remote -type f -print</code></pre>
+      <h3>Windows 11</h3>
+      <pre><code>Get-Content C:\Syslog\robocopy.log -Tail 50
+Get-ScheduledTask -TaskName "Syslog Copy"
+Get-ScheduledTaskInfo -TaskName "Syslog Copy" |
+    Format-List LastRunTime, LastTaskResult, NextRunTime</code></pre>
+      <p>
+        確認は、rsyslogがファイルを作成できているか、<code>syslogcopy</code>がLinux上で読み取れるか、Windowsから共有を参照できるか、Robocopyがコピーできるか、タスクが予定どおり動くか、の順に分けると切り分けやすくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>設定を削除・元に戻す方法</h2>
+      <p>検証を終了する場合は、対象を確認したうえで、追加した設定をレイヤーごとに戻します。</p>
+      <h3>Windowsのタスクを削除</h3>
+      <pre><code>schtasks /delete /tn "Syslog Copy" /f</code></pre>
+      <p>
+        BATファイル、Windowsへコピー済みのログ、Robocopyログは、このコマンドでは削除されません。必要性と保存要件を確認して個別に扱います。
+      </p>
+      <h3>AlmaLinuxのcronを削除</h3>
+      <p><code>sudo crontab -e</code>を実行し、今回追加した次の1行だけを削除します。</p>
+      <pre><code>30 3 * * 0 /usr/bin/find /var/log/remote -type f -delete &amp;&amp; /usr/bin/systemctl restart rsyslog</code></pre>
+      <h3>Samba共有を停止・削除</h3>
+      <p><code>/etc/samba/smb.conf</code>から<code>[remote]</code>セクションを削除し、設定確認後にSambaを再起動します。Samba自体が不要なら無効化します。</p>
+      <pre><code>sudo testparm -s
+sudo systemctl restart smb
+
+# Samba自体を使わなくなる場合
+sudo systemctl disable --now smb
+sudo firewall-cmd --permanent --remove-service=samba
+sudo firewall-cmd --reload</code></pre>
+      <p>共有専用ユーザーが不要になった場合は、Samba登録を削除してからLinuxユーザーを削除します。</p>
+      <pre><code>sudo setfacl -R -x u:syslogcopy /var/log/remote
+sudo setfacl -x d:u:syslogcopy /var/log/remote
+sudo smbpasswd -x syslogcopy
+sudo userdel syslogcopy</code></pre>
+      <h3>rsyslog設定を戻す</h3>
+      <p>
+        <code>/etc/rsyslog.d/remote.conf</code>が今回の検証専用であることを確認して削除または退避し、構文確認後にrsyslogを再起動します。別の受信設定と共用している場合は、今回追加した部分だけを戻します。
+      </p>
+      <pre><code>sudo rsyslogd -N1
+sudo systemctl restart rsyslog</code></pre>
+      <p>
+        <code>/var/log/remote</code>内のログは設定を戻しても自動では消えません。削除は取り返せないため、コピー済みか、保管が不要かを確認してから別途判断します。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回の学び</h2>
+      <ul>
+        <li>Syslog転送はログメッセージを送る仕組みであり、フォルダーを転送する仕組みではない</li>
+        <li>AlmaLinuxで中継すると、NXLogから見た直接の送信元はAlmaLinuxになる</li>
+        <li>元のフォルダー構成を維持するなら、作成済みファイルをコピーする方法が分かりやすい</li>
+        <li>Sambaは共有設定だけでなく、Linux側のファイル権限やACLも必要</li>
+        <li><code>/E</code>は全階層を確認する指定であり、毎回全ファイルをコピーする指定ではない</li>
+        <li>Robocopyの差分判定はファイル単位であり、ファイル内部の差分だけを送る方式ではない</li>
+        <li><code>/MIR</code>と<code>/PURGE</code>を付けなければ、コピー元で消えたログはWindows側に残る</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        AlmaLinuxのrsyslogで機器IPと日付ごとに保存したログを、Sambaの読み取り専用共有とRobocopyでWindows 11へ定期コピーできました。NXLogへの再転送では元のフォルダー構成を引き継げないと理解したことが、構成を見直すきっかけでした。
+      </p>
+      <p>
+        Robocopyは全階層を確認しながらファイル単位で差分を判定し、削除同期オプションを付けなければWindows側の過去ログを残せます。ただし、AlmaLinux側の週次削除より前にコピーが実行されることが前提です。運用ではRobocopyログとタスクの実行結果を確認し、Windows停止期間とAlmaLinux側の保管期間が矛盾しないように設計します。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>

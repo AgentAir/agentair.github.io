@@ -58,29 +58,24 @@
           </thead>
           <tbody>
             <tr>
-              <td>〜2026夏</td>
-              <td>AZ-104</td>
-              <td>会社指示の宿題。最短で消す。CCIEとは直結しない</td>
+              <td>2026年10月</td>
+              <td>AZ-104 取得</td>
+              <td>業務で扱うAzureの体系化</td>
             </tr>
             <tr>
-              <td>2026後半</td>
-              <td>Terraform 資格</td>
-              <td>AZ-104とCCNPの両方に効く土台。純粋に興味がある領域</td>
+              <td>2026年内</td>
+              <td>Terraform Associate (004)</td>
+              <td>業務でGitHub ActionsからTerraformを実行しているため直結。かつ「英語のみ試験」の予行演習</td>
             </tr>
             <tr>
-              <td>〜2027前半</td>
-              <td>CCNP Automation（AUTOCOR）</td>
-              <td>唯一の取得必須資格。CCIEの筆記要件も兼ねる</td>
+              <td>2027年</td>
+              <td>CCNP Automation Core (AUTOCOR / 350-901)</td>
+              <td>筆記要件。本命</td>
             </tr>
             <tr>
-              <td>2027通年</td>
-              <td>ラボ習熟期間</td>
-              <td>NSO・Nexus・SD-WANを実機で反復。合否を分ける</td>
-            </tr>
-            <tr>
-              <td>2028前半</td>
-              <td>CCIE Automation ラボ受験</td>
-              <td>8時間の実機ラボ（設計3h＋展開5h）。最終目標</td>
+              <td>2028年</td>
+              <td>CCIE Automation ラボ</td>
+              <td>最終目標。当面は学習段階まで</td>
             </tr>
           </tbody>
         </table>
@@ -97,6 +92,36 @@
         <li>Terraformを土台に置いたのは、AZ-104（AzureをIaCで管理）とCCNP Automation（IaCが試験の中核）の両方に効く交差点だから。三者の中でTerraformだけが純粋に興味の残る領域でもある</li>
         <li>業務のAzureテンプレート作成のためにTerraform資格を先取りする必要はないと判断した。テンプレート作成に必要なのはHCLの基本とazurermプロバイダのドキュメントを読む力で、資格が問う網羅的な範囲とは重なりが小さい。すでにDevNet・ENAUTO等でAPIや自動化の考え方の土台はあるため、調べながら手を動かせば到達できる</li>
       </ul>
+    </section>
+
+    <section>
+      <h2>2026-09-13 追記：出題言語という見落としと、順序の見直し</h2>
+      <p>
+        当初、資格の重さは技術範囲で決まると考えていた。出題言語は付随的な条件で、学習計画に影響するものだと思っていなかった。これまでLPIC・CCNA・ENCOR・ENAUTO・DEVASCと取得してきたが、いずれも日本語で受験できていたため、そもそも論点として認識していなかった。
+      </p>
+      <p>調べて分かったことは次のとおりである。</p>
+      <ul>
+        <li>DEVASC（200-901）は英語・日本語の両方で提供されている</li>
+        <li>DEVCOR（350-901）は英語のみ</li>
+        <li>DevNet Expert ラボ試験も英語のみ</li>
+        <li>Terraform Associateも英語のみ（オンライン監督付き）</li>
+        <li>非母国語話者には試験時間の追加措置がある（Terraform Associateは60分＋30分、DevNetコア試験は120分＋30分）。ただしDevNetコアは100問前後出題されるため、読む速度そのものが必要になる</li>
+      </ul>
+      <p>
+        つまり、これから受ける試験はすべて英語のみだった。日本語で受けられたDEVASCまでが例外だったと理解し直した。
+      </p>
+      <p>
+        ロードマップの律速は技術範囲ではなく、英語を読む速度だと分かった。
+      </p>
+      <p>
+        ただし「TOEICのスコアを上げてから資格に着手する」という直列化はしないことにした。前段が伸びるほど本体への着手が後ろに押し込まれる構造になるためである。必要なのは英語力全般ではなく技術英語を読む速度であり、それは学習の媒体を英語にすること自体で鍛えられる。
+      </p>
+      <p>最終的な方針は次のとおりである。</p>
+      <ol>
+        <li>Terraform Associateを「英語のみ試験の予行演習」として位置づける。範囲が狭く、業務と重なっているため技術的な負荷が低い。結果として英語の負荷だけを単独で測れる</li>
+        <li>DEVCOR以降の学習は、日本語に訳す工程を挟まず英語のまま行う。分からない語はノートに落として蓄積する</li>
+        <li>TOEICは別枠で継続するが、DEVCORの前提条件には置かない</li>
+      </ol>
     </section>
 
     <section>
@@ -122,6 +147,7 @@
       <ul>
         <li>Cisco Learning Network「A new era for Cisco certifications」: <a href="https://learningnetwork.cisco.com/s/a-new-era-for-cisco-certifications">https://learningnetwork.cisco.com/s/a-new-era-for-cisco-certifications</a></li>
         <li>Cisco Blogs「Views from an insider on the CCNP Automation track」: <a href="https://blogs.cisco.com/learning/views-from-an-insider-on-the-ccnp-automation-track-autocor-edition">https://blogs.cisco.com/learning/views-from-an-insider-on-the-ccnp-automation-track-autocor-edition</a></li>
+        <li>Cisco「現在実施されている試験」: <a href="https://www.cisco.com/c/ja_jp/training-events/training-certifications/exams/current-list.html">https://www.cisco.com/c/ja_jp/training-events/training-certifications/exams/current-list.html</a></li>
       </ul>
     </section>
   </main>

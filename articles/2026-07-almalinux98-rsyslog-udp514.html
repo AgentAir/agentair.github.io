@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlmaLinux 9.8をSyslog受信サーバーにする：rsyslog・firewalld・UDP/514の設定 - Shin Infra Lab</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>AlmaLinux 9.8をSyslog受信サーバーにする：rsyslog・firewalld・UDP/514の設定</h1>
+    <p>2026-07-12 / Linux / AlmaLinux / rsyslog / Syslog</p>
+  </header>
+
+  <nav class="nav">
+    <a href="../index.html">Home</a>
+    <a href="../articles.html">Articles</a>
+    <a href="../about.html">About</a>
+  </nav>
+
+  <main class="container">
+    <section>
+      <h2>はじめに</h2>
+      <p>
+        検証環境で、ネットワーク機器などから送信されるSyslogを受信するため、
+        AlmaLinux 9.8をSyslog受信サーバーとして設定しました。
+      </p>
+      <p>
+        最初は、AlmaLinuxにSyslogサーバーとして利用できるソフトウェアが
+        標準で入っているのか分かっていませんでした。
+        確認するとrsyslogが導入されていたため、追加製品は使わず、
+        rsyslogでUDP/514を待ち受ける構成にしました。
+      </p>
+      <p>
+        この記事では、実際に追加した設定とfirewalldの許可、
+        rsyslogの再起動、待受け状態の確認方法を整理します。
+        なお、送信元機器からの実ログ受信結果と保存先については、
+        確認できた内容を別途追記する予定です。
+      </p>
+    </section>
+
+    <section>
+      <h2>今回の検証環境</h2>
+      <ul>
+        <li><strong>OS：</strong>AlmaLinux 9.8</li>
+        <li><strong>用途：</strong>Syslog受信サーバー</li>
+        <li><strong>ソフトウェア：</strong>rsyslog</li>
+        <li><strong>プロトコル：</strong>UDP</li>
+        <li><strong>ポート：</strong>514</li>
+        <li><strong>サーバー内FW：</strong>firewalld</li>
+        <li><strong>インターネット接続：</strong>なし</li>
+      </ul>
+      <p>
+        このAlmaLinux環境はインターネットに接続していません。
+        追加パッケージが必要になった場合は、インターネットへ接続できる別端末で用意し、
+        ローカルのファイルサーバー経由で転送する必要があります。
+        今回はrsyslogが導入済みだったため、追加インストールは行いませんでした。
+      </p>
+    </section>
+
+    <section>
+      <h2>最初に確認したこと</h2>
+      <p>まず、rsyslogパッケージがインストールされているか確認します。</p>
+      <pre><code>rpm -q rsyslog</code></pre>
+      <p>続いて、rsyslogサービスの状態を確認します。</p>
+      <pre><code>sudo systemctl status rsyslog
+sudo systemctl is-active rsyslog</code></pre>
+      <p>
+        <code>systemctl is-active</code>の結果が<code>active</code>であれば、
+        rsyslogサービス自体は起動しています。
+        ただし、サービスが起動しているだけでは、UDP/514を待ち受けているとは限りません。
+      </p>
+    </section>
+
+    <section>
+      <h2>設定ファイルの場所</h2>
+      <p>rsyslogの主要な設定ファイルは、次の場所にあります。</p>
+      <pre><code>/etc/rsyslog.conf</code></pre>
+      <p>
+        追加設定は、<code>/etc/rsyslog.d/</code>配下に
+        拡張子<code>.conf</code>のファイルとして分けて配置できます。
+        今回は、次のファイルを作成しました。
+      </p>
+      <pre><code>/etc/rsyslog.d/remote.conf</code></pre>
+      <p>
+        標準の<code>/etc/rsyslog.conf</code>を直接変更せず、
+        追加設定を別ファイルにすることで、変更箇所を確認しやすくしました。
+        検証環境を別の担当者へ引き継ぐ場合にも、追加した設定を説明しやすくなります。
+      </p>
+    </section>
+
+    <section>
+      <h2>UDP/514でSyslogを受信する設定</h2>
+      <p><code>/etc/rsyslog.d/remote.conf</code>に、次の設定を記載しました。</p>
+      <pre><code>module(load="imudp")
+input(type="imudp" port="514")</code></pre>
+      <ul>
+        <li><code>module(load="imudp")</code>：UDPでSyslogを受信するためのモジュールを読み込む。</li>
+        <li><code>input(type="imudp" port="514")</code>：UDP/514で受信を待ち受ける。</li>
+      </ul>
+      <p>
+        rsyslogでは、UDP入力に<code>imudp</code>モジュールを使用します。
+        ポート番号は<code>input()</code>で指定します。
+      </p>
+      <p>
+        参考：
+        <a href="https://docs.rsyslog.com/doc/configuration/modules/imudp.html">rsyslog公式ドキュメント：imudp</a>
+      </p>
+    </section>
+
+    <section>
+      <h2>設定ファイルの構文を確認する</h2>
+      <p>rsyslogを再起動する前に、設定ファイルの構文を確認します。</p>
+      <pre><code>sudo rsyslogd -N1</code></pre>
+      <p>
+        エラーが表示された場合は、そのまま再起動せず、
+        <code>/etc/rsyslog.d/remote.conf</code>の記述を確認します。
+        括弧やダブルクォーテーションの不足、モジュール名のスペル、
+        設定の重複などが確認ポイントになります。
+      </p>
+    </section>
+
+    <section>
+      <h2>firewalldでUDP/514を許可する</h2>
+      <p>
+        rsyslog側で受信設定を入れても、firewalldで拒否されている場合は
+        外部からSyslogを受信できません。
+        次のコマンドでUDP/514を恒久的に許可しました。
+      </p>
+      <pre><code>sudo firewall-cmd --permanent --add-port=514/udp
+sudo firewall-cmd --reload</code></pre>
+      <p>設定後、許可されたポートを確認します。</p>
+      <pre><code>sudo firewall-cmd --list-ports</code></pre>
+      <p>
+        <code>514/udp</code>が表示されれば、現在確認しているゾーンに
+        UDP/514の許可設定が入っています。
+        NICが所属するゾーンも確認しておくと確実です。
+      </p>
+      <pre><code>sudo firewall-cmd --get-active-zones
+sudo firewall-cmd --zone=public --list-all</code></pre>
+      <p>
+        参考：
+        <a href="https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/security_hardening/assembly_configuring-a-remote-logging-solution_security-hardening">
+          Red Hat Enterprise Linux 9：リモートロギングの構成
+        </a>
+      </p>
+    </section>
+
+    <section>
+      <h2>rsyslogを再起動する</h2>
+      <p>設定を反映するため、rsyslogを再起動します。</p>
+      <pre><code>sudo systemctl restart rsyslog
+sudo systemctl status rsyslog</code></pre>
+      <p>起動に失敗した場合は、次のコマンドで直近のログを確認します。</p>
+      <pre><code>sudo journalctl -u rsyslog -n 50 --no-pager</code></pre>
+    </section>
+
+    <section>
+      <h2>UDP/514の待受け状態を確認する</h2>
+      <p>
+        rsyslogのサービス状態とは別に、OS上でUDP/514を
+        実際に待ち受けていることを確認します。
+      </p>
+      <pre><code>sudo ss -lunp | grep ':514'</code></pre>
+      <ul>
+        <li><code>-l</code>：待受け中のソケットを表示する。</li>
+        <li><code>-u</code>：UDPソケットを表示する。</li>
+        <li><code>-n</code>：ポート番号を名前に変換せず表示する。</li>
+        <li><code>-p</code>：ソケットを使用しているプロセスを表示する。</li>
+      </ul>
+      <p>
+        出力に<code>0.0.0.0:514</code>が含まれていれば、
+        IPv4の各インターフェースでUDP/514を待ち受けています。
+        <code>[::]:514</code>はIPv6側の待受けを表します。
+      </p>
+    </section>
+
+    <section>
+      <h2>受信できない場合の切り分け</h2>
+      <p>Syslogを受信できない場合は、次の順番で確認すると整理しやすいと考えています。</p>
+      <ol>
+        <li><code>rpm -q rsyslog</code>でrsyslogが導入されているか確認する。</li>
+        <li><code>rsyslogd -N1</code>で設定ファイルの構文を確認する。</li>
+        <li><code>systemctl status rsyslog</code>でサービス状態を確認する。</li>
+        <li><code>ss -lunp</code>でUDP/514の待受け状態を確認する。</li>
+        <li><code>firewall-cmd</code>でサーバー内FWを確認する。</li>
+        <li>途中のFWやACL、ルーティングを確認する。</li>
+        <li>送信元機器の送信先IP、プロトコル、ポートを確認する。</li>
+        <li>受信パケットとログ保存先を確認する。</li>
+      </ol>
+      <p>
+        パケットがサーバーまで届いているか確認できる環境では、
+        次のコマンドも切り分けに利用できます。
+      </p>
+      <pre><code>sudo tcpdump -ni any udp port 514</code></pre>
+      <p>
+        パケットが表示されなければ、送信元設定やネットワーク経路を確認します。
+        パケットが表示されるのにログファイルへ記録されない場合は、
+        rsyslogの保存ルールや保存先を確認します。
+      </p>
+    </section>
+
+    <section>
+      <h2>引継ぎ時に残す情報</h2>
+      <p>
+        今回のサーバーは検証環境ですが、別の担当者が使用する可能性があります。
+        そのため、Syslogサーバーについては次の情報を残すことにしました。
+      </p>
+      <ul>
+        <li>OSとバージョン</li>
+        <li>セグメント、IPアドレス、デフォルトゲートウェイ、DNS</li>
+        <li>SSHなどの接続方法</li>
+        <li>Syslogのプロトコルとポート</li>
+        <li>サーバー内FWとネットワーク上のACL</li>
+        <li>rsyslogの設定ファイル</li>
+        <li>受信ログの保存先とローテーション設定</li>
+        <li>Syslogを送信している機器</li>
+        <li>インターネットへ接続できないこと</li>
+        <li>追加パッケージを持ち込む方法</li>
+      </ul>
+      <p>
+        今回追加した主な設定ファイルは
+        <code>/etc/rsyslog.d/remote.conf</code>です。
+      </p>
+    </section>
+
+    <section>
+      <h2>まとめ</h2>
+      <p>
+        AlmaLinux 9.8をSyslog受信サーバーとして使用するため、
+        rsyslogでUDP/514の受信設定を追加し、firewalldで同ポートを許可しました。
+      </p>
+      <p>設定の中心は、次の2行です。</p>
+      <pre><code>module(load="imudp")
+input(type="imudp" port="514")</code></pre>
+      <p>
+        設定後は、rsyslogサービスが起動していることだけでなく、
+        UDP/514の待受け、firewalld、ネットワーク上のACL、
+        送信元機器の設定を分けて確認する必要があります。
+      </p>
+      <p>
+        今回は受信サーバー側の設定までを整理しました。
+        次は実際の送信元機器からテストログを送り、
+        保存先とログ形式、ログローテーションの動作を確認したいと思います。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Shin Infra Lab</p>
+  </footer>
+</body>
+</html>
